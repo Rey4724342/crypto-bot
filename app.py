@@ -146,12 +146,12 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
                 5. 💡 Ringkasan Analisis & Alasan
                 """
                 
-                # Pembaruan nama model agar kompatibel
+                # Menggunakan gemini-2.5-flash
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     response = model.generate_content(prompt)
                 except Exception:
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(prompt)
                 
                 st.markdown("### 🤖 Hasil Analisis AI Gemini")
