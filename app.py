@@ -10,8 +10,21 @@ st.set_page_config(
     layout="wide"
 )
 
+# 🔒 CSS Khusus: Hilangkan Menu Atas Kanan (GitHub/Share/MainMenu) & Perbesar Branding Rey472
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            .stAppHeader {display: none;}
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# Judul Utama & Subtitle Pencipta Rey472 (Dibuat Lebih Besar & Jelas)
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
-st.caption("by Rey472")
+st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
 
 # Initialize Session State for Trading Journal
 if 'journal' not in st.session_state:
@@ -230,7 +243,7 @@ with tab_main:
                     client = genai.Client(api_key=api_key)
                     
                     prompt = f"""
-                    Kamu adalah konsultan Trading Crypto profesional.
+                    Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
                     Gaya Trading Pengguna: {trading_style}
                     
                     Lakukan analisis teknikal dan sentimen singkat untuk aset berikut:
@@ -240,7 +253,7 @@ with tab_main:
                     - Harga Terendah 24j: Rp {low:,}
 
                     Berikan rekomendasi spesifik sesuai gaya {trading_style} dalam format poin rapi:
-                    1. 🌐 Sentimen Pasar AI (Bullish / Neutral / Bearish)
+                    1. 🌐 Sentimen Pasar AI Rey472 (Bullish / Neutral / Bearish)
                     2. 🟢 Rekomendasi Aksi: (BUY / WAIT / SELL)
                     3. 📥 Area Beli / Buy Entry (Range harga ideal dalam Rp)
                     4. 🎯 Target Profit / TP (TP1 & TP2 dalam Rp)
@@ -253,7 +266,8 @@ with tab_main:
                         contents=prompt
                     )
                     
-                    st.markdown("### 🤖 Hasil Analisis AI & Sentimen Pasar")
+                    # NAMA AI DIREVISI SESUAI PERMINTAAN
+                    st.markdown("### 🤖 Hasil Analisis AI Rey472 & Sentimen Pasar")
                     st.info(response.text)
                     
         except Exception as e:
