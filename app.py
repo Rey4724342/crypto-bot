@@ -12,12 +12,13 @@ st.set_page_config(
 st.title("📈 Crypto Swing AI Analyst")
 st.caption("by Rey472")
 
-# Ambil semua data pair + nama asli + logo koin dari API Indodax
+# Ambil daftar koin dari Indodax
 @st.cache_data(ttl=3600)
 def get_all_indodax_pairs():
     try:
         url = "https://indodax.com/api/pairs"
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).json()
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(url, headers=headers).json()
         
         pairs_dict = {}
         for item in res:
@@ -25,12 +26,8 @@ def get_all_indodax_pairs():
             if ticker_id.endswith('_idr'):
                 symbol = ticker_id.replace('_idr', '').upper()
                 desc = item.get('description', symbol)
-                # Rapikan nama agar tidak dobel BTC/IDR (BTC/IDR)
-                if desc.upper() == f"{symbol}/IDR" or desc.upper() == symbol:
-                    clean_name = symbol
-                else:
-                    clean_name = f"{desc} ({symbol})"
-                    
+                
+                clean_name = f"{symbol} - {desc}" if desc.upper() != symbol else symbol
                 logo_url = item.get('url_logo_png', '')
                 
                 pairs_dict[clean_name] = {
@@ -42,9 +39,10 @@ def get_all_indodax_pairs():
         return dict(sorted(pairs_dict.items()))
     except Exception:
         return {
-            "Bitcoin (BTC)": {
-                'ticker_id': 'btc_idr', 'symbol': 'BTC', 
-                'clean_name': 'Bitcoin (BTC)', 
+            "BTC - Bitcoin": {
+                'ticker_id': 'btc_idr', 
+                'symbol': 'BTC', 
+                'clean_name': 'BTC - Bitcoin', 
                 'logo_url': 'https://indodax.com/v2/logo/png/color/btc.png'
             }
         }
@@ -71,9 +69,6 @@ if selected_info['logo_url']:
 st.sidebar.subheader(selected_info['clean_name'])
 st.sidebar.write(f"**Pair Code:** `{ticker_id}`")
 
-if api_key:
-    genai.configure(api_key=api_key)
-
 # Main Dashboard
 st.markdown("---")
 
@@ -84,8 +79,11 @@ with col_logo:
 with col_title:
     st.subheader(f"{selected_info['clean_name']} / IDR")
 
-# Embed Grafik TradingView Interaktif Realtime
+# Embed Grafik TradingView Universal
 st.markdown("#### 📊 Grafik Candlestick Market")
+
+# Mapping simbol pasar ke TradingView
+tv_symbol = f"BINANCE:{symbol}USDT" if symbol != "BTC" else "BINANCE:BTCUSDT"
 
 tradingview_html = f"""
 <div class="tradingview-widget-container" style="height:500px;width:100%;">
@@ -94,7 +92,7 @@ tradingview_html = f"""
   <script type="text/javascript">
   new TradingView.widget({{
     "autosize": true,
-    "symbol": "INDODAX:{symbol}IDR",
+    "symbol": "{tv_symbol}",
     "interval": "60",
     "timezone": "Asia/Jakarta",
     "theme": "dark",
@@ -102,7 +100,7 @@ tradingview_html = f"""
     "locale": "id",
     "toolbar_bg": "#f1f3f6",
     "enable_publishing": false,
-    "allow_symbol_change": false,
+    "allow_symbol_change": true,
     "container_id": "tradingview_chart"
   }});
   </script>
@@ -114,24 +112,28 @@ components.html(tradingview_html, height=520)
 if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
     try:
         url = f"https://indodax.com/api/ticker/{ticker_id}"
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).json()['ticker']
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(url, headers=headers).json()['ticker']
+        
         harga = int(res['last'])
         high = int(res['high'])
         low = int(res['low'])
 
         c1, c2, c3 = st.columns(3)
-        c1.metric(label="Harga Saat Ini", value=f"Rp {harga:,}")
+        c1.metric(label="Harga Saat Ini (Indodax)", value=f"Rp {harga:,}")
         c2.metric(label="High 24j", value=f"Rp {high:,}")
         c3.metric(label="Low 24j", value=f"Rp {low:,}")
 
         if not api_key:
-            st.warning("⚠️ Harap masukkan **Gemini API Key** di sidebar untuk menggunakan fitur analisis AI!")
+            st.warning("⚠️ Harap masukkan **Gemini API Key** di sidebar untuk menjalankan analisis AI!")
         else:
-            with st.spinner(f"AI sedang menganalisis pergerakan market {selected_info['clean_name']}..."):
+            with st.spinner(f"AI sedang menganalisis market {selected_info['clean_name']}..."):
+                genai.configure(api_key=api_key)
+                
                 prompt = f"""
                 Kamu adalah konsultan Swing Trading Crypto profesional.
                 Lakukan analisis teknikal ringkas dan praktis untuk aset berikut:
-                - Nama Koin: {selected_info['clean_name']}
+                - Nama Aset: {selected_info['clean_name']}
                 - Harga Saat Ini: Rp {harga:,}
                 - Harga Tertinggi 24j: Rp {high:,}
                 - Harga Terendah 24j: Rp {low:,}
@@ -143,11 +145,11 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
                 4. 💡 Ringkasan Analisis & Alasan Swing Trade
                 """
                 
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 response = model.generate_content(prompt)
                 
                 st.markdown("### 🤖 Hasil Analisis AI Gemini")
                 st.info(response.text)
                 
     except Exception as e:
-        st.error("Gagal mengambil data dari Indodax. Silakan coba beberapa saat lagi.")
+        st.error(f"Gagal memuat analisis: {e}")
