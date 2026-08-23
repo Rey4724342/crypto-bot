@@ -106,7 +106,7 @@ tradingview_html = f"""
 """
 components.html(tradingview_html, height=520)
 
-# Tombol Analisis AI Sinyal Jual/Beli
+# Tombol Analisis AI
 if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
     try:
         url = f"https://indodax.com/api/ticker/{ticker_id}"
@@ -127,29 +127,34 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
         if not api_key:
             st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
         else:
-            with st.spinner(f"AI sedang menghitung sinyal Beli & Jual untuk {selected_info['clean_name']}..."):
+            with st.spinner(f"AI sedang menganalisis market {selected_info['clean_name']}..."):
                 genai.configure(api_key=api_key)
                 
-                # Prompt diperbarui agar AI memberikan angka harga beli dan jual yang pasti
                 prompt = f"""
-                Kamu adalah seorang Trader Senior dan Analis Crypto profesional.
-                Berdasarkan data harga koin {selected_info['clean_name']} saat ini:
-                - Harga Realtime: Rp {harga:,}
+                Kamu adalah konsultan Swing Trading Crypto profesional.
+                Lakukan analisis teknikal ringkas dan praktis untuk aset berikut:
+                - Nama Aset: {selected_info['clean_name']}
+                - Harga Saat Ini: Rp {harga:,}
                 - Harga Tertinggi 24j: Rp {high:,}
                 - Harga Terendah 24j: Rp {low:,}
 
-                Berikan rekomendasi trading jangka pendek / swing trade yang SANGAT JELAS dan DETAIL berupa angka harga spesifik dalam Rupiah (Rp):
-                1. 🟢 **Rekomendasi Aksi**: (Pilih salah satu: *BUY / WAIT / SELL*)
-                2. 📥 **Harga Beli (Buy Entry)**: Tentukan kisaran harga pastinya (Rp ...) untuk mulai membeli.
-                3. 🎯 **Harga Jual / Target Profit (TP)**: Tentukan target harga jual pastinya untuk ambil untung (TP1 & TP2 dalam Rp ...).
-                4. 🛑 **Batas Rugi / Stop Loss (SL)**: Tentukan batas pengamanan harga (dalam Rp ...) jika market berbalik turun.
-                5. 💡 **Alasan / Analisis Singkat**: Berikan alasan logis mengapa harus beli/jual di kisaran harga tersebut.
+                Berikan rekomendasi dalam format poin rapi:
+                1. 🟢 Rekomendasi Aksi: (BUY / WAIT / SELL)
+                2. 📥 Area Beli / Buy Entry (Range harga ideal dalam Rp)
+                3. 🎯 Target Profit / TP (TP1 & TP2 dalam Rp)
+                4. 🛑 Stop Loss / SL (Batas rugi dalam Rp)
+                5. 💡 Ringkasan Analisis & Alasan
                 """
                 
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                response = model.generate_content(prompt)
+                # Pembaruan nama model agar kompatibel
+                try:
+                    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                    response = model.generate_content(prompt)
+                except Exception:
+                    model = genai.GenerativeModel('gemini-pro')
+                    response = model.generate_content(prompt)
                 
-                st.markdown("### 🤖 Sinyal Trading AI Gemini")
+                st.markdown("### 🤖 Hasil Analisis AI Gemini")
                 st.info(response.text)
                 
     except Exception as e:
