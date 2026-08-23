@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(
     page_title="Crypto AI Analyst - Rey472", 
@@ -78,7 +78,7 @@ with col_logo:
 with col_title:
     st.subheader(f"{selected_info['clean_name']} / IDR")
 
-# Embed Grafik TradingView Universal
+# Embed Grafik TradingView
 st.markdown("#### 📊 Grafik Candlestick Market")
 
 tv_symbol = f"BINANCE:{symbol}USDT" if symbol != "BTC" else "BINANCE:BTCUSDT"
@@ -128,7 +128,7 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
             st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
         else:
             with st.spinner(f"AI sedang menganalisis market {selected_info['clean_name']}..."):
-                genai.configure(api_key=api_key)
+                client = genai.Client(api_key=api_key)
                 
                 prompt = f"""
                 Kamu adalah konsultan Swing Trading Crypto profesional.
@@ -146,13 +146,10 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
                 5. 💡 Ringkasan Analisis & Alasan
                 """
                 
-                # Menggunakan gemini-2.5-flash
-                try:
-                    model = genai.GenerativeModel('gemini-2.5-flash')
-                    response = model.generate_content(prompt)
-                except Exception:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt)
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt
+                )
                 
                 st.markdown("### 🤖 Hasil Analisis AI Gemini")
                 st.info(response.text)
