@@ -147,7 +147,7 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
                 """
                 
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-3.5-flash',
                     contents=prompt
                 )
                 
