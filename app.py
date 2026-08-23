@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas Kanan (GitHub/Share/MainMenu) & Perbesar Branding Rey472
+# 🔒 CSS Khusus: Hilangkan Menu Atas, Toolbar, & Logo Merah Streamlit di Pojok Kanan Bawah HP
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -18,13 +18,26 @@ hide_streamlit_style = """
             footer {visibility: hidden;}
             .stAppHeader {display: none;}
             [data-testid="stToolbar"] {visibility: hidden !important;}
+            
+            /* Sembunyikan Logo Merah / Badge Streamlit di Pojok Kanan Bawah */
+            .viewerBadge_container__1A53K, 
+            [data-testid="stStatusWidget"],
+            .stEmotioncache-zp150c,
+            div[class*="viewerBadge"],
+            #stDecoration {
+                display: none !important;
+                visibility: hidden !important;
+            }
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Judul Utama & Subtitle Pencipta Rey472 (Dibuat Lebih Besar & Jelas)
+# Judul Utama & Subtitle Pencipta Rey472
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
 st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
+
+# Petunjuk Khusus Pengguna HP / Android
+st.caption("📱 *Pengguna HP: Klik tanda panah ( > ) di pojok kiri paling atas layar untuk memilih Koin & Strategi.*")
 
 # Initialize Session State for Trading Journal
 if 'journal' not in st.session_state:
@@ -266,7 +279,6 @@ with tab_main:
                         contents=prompt
                     )
                     
-                    # NAMA AI DIREVISI SESUAI PERMINTAAN
                     st.markdown("### 🤖 Hasil Analisis AI Rey472 & Sentimen Pasar")
                     st.info(response.text)
                     
