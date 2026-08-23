@@ -1,8 +1,7 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import google.generativeai as genai
-import plotly.graph_objects as go
-from datetime import datetime
 
 st.set_page_config(
     page_title="Crypto AI Analyst - Rey472", 
@@ -13,26 +12,31 @@ st.set_page_config(
 st.title("📈 Crypto Swing AI Analyst")
 st.caption("by Rey472")
 
-# Ambil daftar koin dari Indodax
+# Ambil semua data pair + nama asli + logo koin dari API Indodax
 @st.cache_data(ttl=3600)
 def get_all_indodax_pairs():
     try:
         url = "https://indodax.com/api/pairs"
-        res = requests.get(url).json()
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).json()
         
         pairs_dict = {}
         for item in res:
             ticker_id = item.get('ticker_id', '')
             if ticker_id.endswith('_idr'):
-                description = item.get('description', ticker_id.replace('_idr', '').upper())
                 symbol = ticker_id.replace('_idr', '').upper()
+                desc = item.get('description', symbol)
+                # Rapikan nama agar tidak dobel BTC/IDR (BTC/IDR)
+                if desc.upper() == f"{symbol}/IDR" or desc.upper() == symbol:
+                    clean_name = symbol
+                else:
+                    clean_name = f"{desc} ({symbol})"
+                    
                 logo_url = item.get('url_logo_png', '')
                 
-                display_label = f"{description} ({symbol})"
-                pairs_dict[display_label] = {
+                pairs_dict[clean_name] = {
                     'ticker_id': ticker_id,
                     'symbol': symbol,
-                    'description': description,
+                    'clean_name': clean_name,
                     'logo_url': logo_url
                 }
         return dict(sorted(pairs_dict.items()))
@@ -40,31 +44,10 @@ def get_all_indodax_pairs():
         return {
             "Bitcoin (BTC)": {
                 'ticker_id': 'btc_idr', 'symbol': 'BTC', 
-                'description': 'Bitcoin', 
+                'clean_name': 'Bitcoin (BTC)', 
                 'logo_url': 'https://indodax.com/v2/logo/png/color/btc.png'
             }
         }
-
-# Fungsi mengambil data riwayat Candle (Klines) Indodax
-def get_klines_data(pair, tf="1h"):
-    try:
-        # API klines Indodax
-        url = f"https://indodax.com/tradingview/history_v2?symbol={pair.upper()}&resolution=60&from={int(datetime.now().timestamp()) - 86400*7}&to={int(datetime.now().timestamp())}"
-        res = requests.get(url).json()
-        
-        if res.get('s') == 'ok':
-            times = [datetime.fromtimestamp(t) for t in res['t']]
-            return {
-                'time': times,
-                'open': res['o'],
-                'high': res['h'],
-                'low': res['l'],
-                'close': res['c'],
-                'volume': res['v']
-            }
-    except Exception:
-        return None
-    return None
 
 pairs_data = get_all_indodax_pairs()
 
@@ -80,11 +63,12 @@ selected_label = st.sidebar.selectbox(
 
 selected_info = pairs_data[selected_label]
 ticker_id = selected_info['ticker_id']
+symbol = selected_info['symbol']
 
 st.sidebar.markdown("---")
 if selected_info['logo_url']:
     st.sidebar.image(selected_info['logo_url'], width=50)
-st.sidebar.subheader(selected_info['description'])
+st.sidebar.subheader(selected_info['clean_name'])
 st.sidebar.write(f"**Pair Code:** `{ticker_id}`")
 
 if api_key:
@@ -98,37 +82,39 @@ with col_logo:
     if selected_info['logo_url']:
         st.image(selected_info['logo_url'], width=64)
 with col_title:
-    st.subheader(f"{selected_info['description']} ({selected_info['symbol']}/IDR)")
+    st.subheader(f"{selected_info['clean_name']} / IDR")
 
-# Tampilkan Chart Candlestick
+# Embed Grafik TradingView Interaktif Realtime
 st.markdown("#### 📊 Grafik Candlestick Market")
-chart_data = get_klines_data(ticker_id)
 
-if chart_data:
-    fig = go.Figure(data=[go.Candlestick(
-        x=chart_data['time'],
-        open=chart_data['open'],
-        high=chart_data['high'],
-        low=chart_data['low'],
-        close=chart_data['close'],
-        increasing_line_color='#00c076', # Warna hijau
-        decreasing_line_color='#ff3b30'  # Warna merah
-    )])
-    
-    fig.update_layout(
-        template="plotly_dark",
-        xaxis_rangeslider_visible=False,
-        height=400,
-        margin=dict(l=10, r=10, t=10, b=10)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("Grafik candlestick sedang memuat atau tidak tersedia untuk pair ini.")
+tradingview_html = f"""
+<div class="tradingview-widget-container" style="height:500px;width:100%;">
+  <div id="tradingview_chart" style="height:500px;width:100%;"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <script type="text/javascript">
+  new TradingView.widget({{
+    "autosize": true,
+    "symbol": "INDODAX:{symbol}IDR",
+    "interval": "60",
+    "timezone": "Asia/Jakarta",
+    "theme": "dark",
+    "style": "1",
+    "locale": "id",
+    "toolbar_bg": "#f1f3f6",
+    "enable_publishing": false,
+    "allow_symbol_change": false,
+    "container_id": "tradingview_chart"
+  }});
+  </script>
+</div>
+"""
+components.html(tradingview_html, height=520)
 
 # Tombol Analisis AI
 if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
     try:
-        res = requests.get(f"https://indodax.com/api/ticker/{ticker_id}").json()['ticker']
+        url = f"https://indodax.com/api/ticker/{ticker_id}"
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}).json()['ticker']
         harga = int(res['last'])
         high = int(res['high'])
         low = int(res['low'])
@@ -141,11 +127,11 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
         if not api_key:
             st.warning("⚠️ Harap masukkan **Gemini API Key** di sidebar untuk menggunakan fitur analisis AI!")
         else:
-            with st.spinner(f"AI sedang menganalisis pergerakan market {selected_info['description']}..."):
+            with st.spinner(f"AI sedang menganalisis pergerakan market {selected_info['clean_name']}..."):
                 prompt = f"""
                 Kamu adalah konsultan Swing Trading Crypto profesional.
                 Lakukan analisis teknikal ringkas dan praktis untuk aset berikut:
-                - Nama Koin: {selected_info['description']} ({selected_info['symbol']})
+                - Nama Koin: {selected_info['clean_name']}
                 - Harga Saat Ini: Rp {harga:,}
                 - Harga Tertinggi 24j: Rp {high:,}
                 - Harga Terendah 24j: Rp {low:,}
@@ -163,5 +149,5 @@ if st.button("🔍 Mulaikan Analisis Market", use_container_width=True):
                 st.markdown("### 🤖 Hasil Analisis AI Gemini")
                 st.info(response.text)
                 
-    except Exception:
+    except Exception as e:
         st.error("Gagal mengambil data dari Indodax. Silakan coba beberapa saat lagi.")
