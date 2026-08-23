@@ -10,34 +10,31 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas, Toolbar, & Logo Merah Streamlit di Pojok Kanan Bawah HP
+# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar, dan Logo Merah (Crown/Viewer Badge) di HP & PC
 hide_streamlit_style = """
             <style>
-            #MainMenu {visibility: hidden;}
-            header {visibility: hidden;}
-            footer {visibility: hidden;}
-            .stAppHeader {display: none;}
-            [data-testid="stToolbar"] {visibility: hidden !important;}
+            #MainMenu {display: none !important;}
+            header {display: none !important;}
+            footer {display: none !important;}
+            .stAppHeader {display: none !important;}
+            [data-testid="stToolbar"] {display: none !important;}
+            [data-testid="stDecoration"] {display: none !important;}
+            [data-testid="stStatusWidget"] {display: none !important;}
             
-            /* Sembunyikan Logo Merah / Badge Streamlit di Pojok Kanan Bawah */
-            .viewerBadge_container__1A53K, 
-            [data-testid="stStatusWidget"],
-            .stEmotioncache-zp150c,
-            div[class*="viewerBadge"],
-            #stDecoration {
-                display: none !important;
-                visibility: hidden !important;
-            }
+            /* Paksa Hilangkan Logo Merah / Streamlit Badge Pojok Kanan Bawah */
+            div[class*="viewerBadge"] {display: none !important;}
+            div[class*="stEmotioncache"] {background: transparent;}
+            iframe[title="data-testid"] {display: none !important;}
+            .viewerBadge_container__1A53K {display: none !important;}
+            .viewerBadge_link__1S137 {display: none !important;}
+            #root > div:nth-child(1) > div.withScreencast > div > div > div > section > div.stEmotioncache-1dp5239 {display: none !important;}
+            
+            /* Floating Badge Suppressor */
+            [data-testid="manage-app-button"] {display: none !important;}
+            .stApp > footer {display: none !important;}
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-# Judul Utama & Subtitle Pencipta Rey472
-st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
-st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
-
-# Petunjuk Khusus Pengguna HP / Android
-st.caption("📱 *Pengguna HP: Klik tanda panah ( > ) di pojok kiri paling atas layar untuk memilih Koin & Strategi.*")
 
 # Initialize Session State for Trading Journal
 if 'journal' not in st.session_state:
@@ -89,31 +86,35 @@ def get_all_indodax_pairs():
 
 pairs_data = get_all_indodax_pairs()
 
-# Sidebar Pengaturan
-st.sidebar.header("⚙️ Navigasi & Mode")
+# Header Utama
+st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
+st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
 
-selected_label = st.sidebar.selectbox(
-    "🔍 Cari & Pilih Koin Utama",
-    options=list(pairs_data.keys()),
-    index=0
-)
+st.markdown("---")
+
+# ⚙️ MENU UTAMA DI HALAMAN DEPAN (Ramah Tampilan HP & Laptop)
+st.markdown("### ⚙️ Pengaturan Koin & Strategi")
+menu_col1, menu_col2 = st.columns(2)
+
+with menu_col1:
+    selected_label = st.selectbox(
+        "🔍 Cari & Pilih Koin Utama:",
+        options=list(pairs_data.keys()),
+        index=0
+    )
+
+with menu_col2:
+    trading_style = st.radio(
+        "🎯 Pilih Mode Strategi AI:",
+        ["Swing Trading (Santai / Menengah)", "Scalping (Cepat / Intraday)"],
+        horizontal=True
+    )
 
 selected_info = pairs_data[selected_label]
 ticker_id = selected_info['ticker_id']
 symbol = selected_info['symbol']
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("🎯 Mode Gaya Trading AI")
-trading_style = st.sidebar.radio(
-    "Pilih Strategi:",
-    ["Swing Trading (Santai / Menengah)", "Scalping (Cepat / Intraday)"]
-)
-
-st.sidebar.markdown("---")
-if selected_info['logo_url']:
-    st.sidebar.image(selected_info['logo_url'], width=50)
-st.sidebar.subheader(selected_info['clean_name'])
-st.sidebar.write(f"**Pair Code:** `{ticker_id}`")
+st.markdown("---")
 
 # TAB SYSTEM FOR BETTER ORGANIZATIONS
 tab_main, tab_compare, tab_journal, tab_calc = st.tabs([
