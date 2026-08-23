@@ -171,7 +171,7 @@ with tab_main:
     """
     components.html(tradingview_html, height=500)
 
-    # 🚨 Price Alert Setup (Notifikasi Sederhana)
+    # Price Alert Setup
     st.markdown("#### 🚨 Set Target Alert Harga Kamu")
     alert_target = st.number_input(f"Masukkan Harga Target Beli/Jual untuk {symbol} (Rp):", min_value=0, value=0, step=1000)
 
@@ -195,7 +195,7 @@ with tab_main:
             if alert_target > 0:
                 if harga <= alert_target:
                     st.balloons()
-                    st.success(f"🎯 **ALERT DISENTUH!** Harga {symbol} saat ini (Rp {harga:,}) sudah mencapat/dibawah target belimu (Rp {alert_target:,})!")
+                    st.success(f"🎯 **ALERT DISENTUH!** Harga {symbol} saat ini (Rp {harga:,}) sudah mencapai/dibawah target belimu (Rp {alert_target:,})!")
                 else:
                     st.info(f"⏳ Harga saat ini masih diatas target alert kamu (Selisih: Rp {harga - alert_target:,}).")
 
@@ -220,7 +220,7 @@ with tab_main:
                 else:
                     st.error(f"📉 **Tren Harian:** Di bawah rata-rata 24j (Rp {avg_24h:,}). Bearish pendek.")
 
-            # Eksekusi AI Gemini
+            # Eksekusi AI
             api_key = st.secrets.get("GEMINI_API_KEY")
 
             if not api_key:
@@ -253,7 +253,7 @@ with tab_main:
                         contents=prompt
                     )
                     
-                    st.markdown("### 🤖 Hasil Analisis AI Gemini & Sentimen")
+                    st.markdown("### 🤖 Hasil Analisis AI & Sentimen Pasar")
                     st.info(response.text)
                     
         except Exception as e:
@@ -304,7 +304,7 @@ with tab_journal:
         j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=1, value=100000)
         j_notes = st.text_area("Catatan Alasan Trade / Strategi:")
         
-        submitted = st.form_submit_dict = st.form_submit_button("➕ Simpan ke Catatan")
+        submitted = st.form_submit_button("➕ Simpan ke Catatan")
         if submitted:
             st.session_state.journal.append({
                 "Koin": j_coin,
@@ -350,7 +350,7 @@ with tab_calc:
         st.markdown("#### 2. Instant Converter Rupiah ➡️ Koin")
         conv_rupiah = st.number_input("Jumlah Rupiah Beli:", min_value=10000, value=500000, step=50000)
         conv_price = st.number_input(f"Harga Koin {symbol} (Rp):", min_value=1, value=100000)
-        fee_pct = 0.5 # Estimasi fee indodax
+        fee_pct = 0.5
         
         nett_rp = conv_rupiah * (1 - (fee_pct/100))
         estimasi_koin = nett_rp / conv_price if conv_price > 0 else 0
