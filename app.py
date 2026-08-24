@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import requests
 import pandas as pd
+import xml.etree.ElementTree as ET
 from google import genai
 
 st.set_page_config(
@@ -10,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus Mobile & Desktop Supaya Tidak Gepeng
+# 🔒 CSS Khusus Mobile & Desktop Supaya Tampilan Rapi
 responsive_css = """
             <style>
             #MainMenu {display: none !important;}
@@ -88,6 +89,34 @@ def get_all_indodax_pairs():
             }
         }
 
+@st.cache_data(ttl=1800)
+def get_fear_and_greed():
+    try:
+        url = "https://api.alternative.me/fng/"
+        res = requests.get(url, timeout=5).json()
+        data = res['data'][0]
+        return data['value'], data['value_classification']
+    except Exception:
+        return "50", "Neutral"
+
+@st.cache_data(ttl=1800)
+def get_crypto_news():
+    try:
+        url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=5)
+        root = ET.fromstring(response.content)
+        
+        news_items = []
+        for item in root.findall('./channel/item')[:5]:
+            title = item.find('title').text if item.find('title') is not None else 'No Title'
+            link = item.find('link').text if item.find('link') is not None else '#'
+            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ''
+            news_items.append({'title': title, 'link': link, 'date': pub_date[:16]})
+        return news_items
+    except Exception:
+        return []
+
 pairs_data = get_all_indodax_pairs()
 
 # Header Utama
@@ -118,8 +147,9 @@ symbol = selected_info['symbol']
 
 st.markdown("---")
 
-tab_main, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
-    "📈 Dashboard Utama & AI", 
+tab_main, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
+    "📈 Dashboard Utama & AI",
+    "📰 Sentimen & Berita Market",
     "🔀 Perbandingan Koin", 
     "📓 Jurnal Trading", 
     "🧮 Kalkulator & Averaging",
@@ -172,7 +202,7 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 📊 GRAFIK TRADINGVIEW (Stabil PC & Mobile)
+    # 📊 GRAFIK TRADINGVIEW
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
     tv_widget_code = f"""
@@ -198,7 +228,7 @@ with tab_main:
     """
     components.html(tv_widget_code, height=490)
 
-    # 🚀 Tombol Pintas Darurat jika Jaringan HP Sedang Lemot
+    # 🚀 Tombol Pintas
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         st.link_button(f"🔗 Buka Chart {symbol} (Tab Baru)", f"https://id.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT", use_container_width=True)
@@ -292,7 +322,65 @@ with tab_main:
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
 
-# ================= TAB 2: PERBANDINGAN KOIN =================
+# ================= TAB 2: SENTIMEN & BERITA MARKET =================
+with tab_sentimen:
+    st.markdown("### 🧠 Sentimen Pasar Crypto Global & Berita Terkini")
+    
+    col_fg, col_news = st.columns([1, 2])
+    
+    with col_fg:
+        st.markdown("#### 😱 Crypto Fear & Greed Index")
+        fng_val, fng_class = get_fear_and_greed()
+        
+        try:
+            val_num = int(fng_val)
+        except ValueError:
+            val_num = 50
+            
+        if val_num <= 25:
+            color_code = "#FF4D4D" # Extreme Fear (Red)
+        elif val_num <= 45:
+            color_code = "#FFA500" # Fear (Orange)
+        elif val_num <= 55:
+            color_code = "#FFD700" # Neutral (Yellow)
+        elif val_num <= 75:
+            color_code = "#90EE90" # Greed (Light Green)
+        else:
+            color_code = "#00E676" # Extreme Greed (Bright Green)
+
+        st.markdown(
+            f"""
+            <div style="
+                border: 2px solid {color_code}; 
+                border-radius: 12px; 
+                padding: 20px; 
+                text-align: center; 
+                background-color: #1a1c23;
+                margin-bottom: 15px;">
+                <h1 style="color: {color_code}; font-size: 64px; margin: 0;">{fng_val}</h1>
+                <h3 style="color: #FFFFFF; margin: 10px 0 0 0;">{fng_class.upper()}</h3>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        st.caption("💡 **Cara Membaca Index:**")
+        st.write("• **0-45 (Fear)**: Pasar sedang takut/diskonto. Sering dianggap area peluang beli (*Buy the Dip*).")
+        st.write("• **55-100 (Greed)**: Pasar sedang sangat optimis/FOMO. Hati-hati potensi koreksi mendadak.")
+
+    with col_news:
+        st.markdown("#### 📰 Berita Crypto Global Terbaru (CoinDesk)")
+        news_list = get_crypto_news()
+        
+        if news_list:
+            for news in news_list:
+                st.markdown(f"**[{news['title']}]({news['link']})**")
+                st.caption(f"🗓️ Dipublikasikan: {news['date']}")
+                st.markdown("---")
+        else:
+            st.info("Gagal mengambil berita terkini. Silakan coba muat ulang halaman.")
+
+# ================= TAB 3: PERBANDINGAN KOIN =================
 with tab_compare:
     st.markdown("### 🔀 Bandingkan 2 Koin Indodax")
     comp_col1, comp_col2 = st.columns(2)
@@ -327,7 +415,7 @@ with tab_compare:
         except Exception as err:
             st.error(f"Gagal membandingkan koin: {err}")
 
-# ================= TAB 3: JURNAL TRADING =================
+# ================= TAB 4: JURNAL TRADING =================
 with tab_journal:
     st.markdown("### 📓 Jurnal Catatan Trading")
     
@@ -355,7 +443,7 @@ with tab_journal:
             st.session_state.journal = []
             st.rerun()
 
-# ================= TAB 4: KALKULATOR & AVERAGING =================
+# ================= TAB 5: KALKULATOR & AVERAGING =================
 with tab_calc:
     st.markdown("### 🧮 Kalkulator Trading & Averaging Down")
     
@@ -395,7 +483,7 @@ with tab_calc:
             st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
             st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
 
-# ================= TAB 5: ASISTEN AI CHAT =================
+# ================= TAB 6: ASISTEN AI CHAT =================
 with tab_chat:
     st.markdown("### 💬 Asisten Trading AI Rey472")
     st.caption("Tanyakan apa saja seputar strategi crypto, cara membaca grafik, manajemen emosi, atau tips trading secara interaktif.")
