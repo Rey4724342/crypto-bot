@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Responsif Khusus Komputer & Android
+# 🔒 CSS Khusus Mobile (Tidak merusak layout Desktop PC)
 responsive_css = """
             <style>
             #MainMenu {display: none !important;}
@@ -22,7 +22,8 @@ responsive_css = """
             [data-testid="stStatusWidget"] {display: none !important;}
             div[class*="viewerBadge"] {display: none !important;}
 
-            @media only screen and (max-width: 768px) {
+            /* Hanya ubah kolom jadi 100% jika layar benar-benar ukuran HP (Mobile) */
+            @media screen and (max-width: 768px) {
                 .stTabs [data-baseweb="tab-list"] {
                     gap: 4px;
                     overflow-x: auto;
@@ -32,9 +33,8 @@ responsive_css = """
                     font-size: 12px;
                     padding: 8px 10px;
                 }
-                [data-testid="column"] {
+                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
                     width: 100% !important;
-                    flex: 1 1 100% !important;
                     min-width: 100% !important;
                 }
             }
@@ -173,29 +173,11 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # ⚡ SOLUSI ANTI-LOADING ANDROID: Menggunakan TradingView Advanced Widget Container Script
+    # ⚡ GRAFIK UNIVERSAL: Mendukung PC (Layar Lebar) dan Android sekaligus
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
-    tv_html = f"""
-    <div class="tradingview-widget-container" style="height:450px;width:100%">
-      <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-      {{
-        "autosize": true,
-        "symbol": "BINANCE:{symbol}USDT",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
-      }}
-      </script>
-    </div>
-    """
-    components.html(tv_html, height=460)
+    tv_embed_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE%3A{symbol}USDT&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FJakarta"
+    components.iframe(tv_embed_url, height=500, scrolling=False)
 
     st.markdown("---")
 
