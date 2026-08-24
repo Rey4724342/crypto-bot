@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar
+# 🔒 CSS Khusus
 hide_streamlit_style = """
             <style>
             #MainMenu {display: none !important;}
@@ -25,11 +25,12 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Initialize Session State
 if 'journal' not in st.session_state:
     st.session_state.journal = []
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
 
-# 🚀 OPTIMASI KECEPATAN: Cache data diperpanjang agar web tidak sering fetch ulang
+# Cache Data API
 @st.cache_data(ttl=300)
 def get_indodax_summary():
     try:
@@ -74,12 +75,11 @@ def get_all_indodax_pairs():
 
 pairs_data = get_all_indodax_pairs()
 
-# Header Utama
+# Header Utama (Tanpa Fast Mode Active)
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
-st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b> — <span style='color: #00E676;'>⚡ Fast Mode Active</span></h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Menu Utama di Halaman Depan
 st.markdown("### ⚙️ Pengaturan Koin & Strategi")
 menu_col1, menu_col2 = st.columns(2)
 
@@ -103,11 +103,12 @@ symbol = selected_info['symbol']
 
 st.markdown("---")
 
-tab_main, tab_compare, tab_journal, tab_calc = st.tabs([
+tab_main, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
     "📈 Dashboard Utama & AI", 
     "🔀 Perbandingan Koin", 
     "📓 Jurnal Trading", 
-    "🧮 Kalkulator & Converter"
+    "🧮 Kalkulator & Averaging",
+    "💬 Asisten AI Chat"
 ])
 
 # ================= TAB 1: DASHBOARD UTAMA =================
@@ -156,37 +157,17 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🚀 GRAFIK TRADINGVIEW INSTAN (Real-time tanpa loading lama)
+    # Fast-Load TradingView Widget (Optimized)
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
-    
     tv_html_code = f"""
     <div class="tradingview-widget-container" style="height:480px;width:100%">
-      <div id="tradingview_chart" style="height:100%;width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget(
-      {{
-        "width": "100%",
-        "height": 480,
-        "symbol": "BINANCE:{symbol}USDT",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_chart"
-      }});
-      </script>
+      <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=BINANCE:{symbol}USDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Asia/Jakarta" width="100%" height="480" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
     </div>
     """
     components.html(tv_html_code, height=490)
 
     st.markdown("---")
 
-    # 🎯 ANALISIS POSISI PORTOFOLIO SAYA
     st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
     st.info("Masukkan harga beli awal kamu di bawah ini (mulai dari 0). AI akan menghitung posisi profit/rugi, Stop Loss, dan Target Jual (TP) secara kilat.")
 
@@ -205,6 +186,11 @@ with tab_main:
             current_market_price = int(res['last'])
             high = int(res['high'])
             low = int(res['low'])
+
+            if current_market_price <= low * 1.02:
+                st.warning("⚠️ **Perhatian Risk**: Harga pasar saat ini berada sangat dekat dengan titik terendah (Low 24j). Pertimbangkan konfirmasi pantulan support.")
+            elif current_market_price >= high * 0.98:
+                st.warning("🔥 **Perhatian Area High**: Harga berada di dekat puncak 24j. Hati-hati terhadap aksi profit taking.")
 
             if my_buy_price > 0:
                 pnl_rp = (current_market_price - my_buy_price) * my_amount_coin
@@ -254,7 +240,7 @@ with tab_main:
                     """
                     
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',  # Menggunakan model flash yang lebih cepat merespon
+                        model='gemini-1.5-flash',
                         contents=prompt
                     )
                     
@@ -327,9 +313,9 @@ with tab_journal:
             st.session_state.journal = []
             st.rerun()
 
-# ================= TAB 4: KALKULATOR & CONVERTER =================
+# ================= TAB 4: KALKULATOR & AVERAGING =================
 with tab_calc:
-    st.markdown("### 🧮 Kalkulator Management Risiko & Converter Instant")
+    st.markdown("### 🧮 Kalkulator Trading & Averaging Down")
     
     calc_col1, calc_col2 = st.columns(2)
 
@@ -349,18 +335,61 @@ with tab_calc:
             st.info(f"💡 Maksimal Rugi Aman: **Rp {int(maks_resiko_rp):,}**")
             st.success(f"💡 Alokasi Beli Ideal: **Rp {int(min(rekomendasi_posisi_rp, modal_rp)):,}**")
         else:
-            st.warning("⚠️ Masukkan harga entry dan stop loss yang valid (Entry > Stop Loss).")
+            st.warning("⚠️ Masukkan harga entry dan stop loss yang valid.")
 
     with calc_col2:
-        st.markdown("#### 2. Instant Converter Rupiah ➡️ Koin")
-        conv_rupiah = st.number_input("Jumlah Rupiah Beli:", min_value=0.0, value=0.0, step=50000.0)
-        conv_price = st.number_input(f"Harga Koin {symbol} (Rp):", min_value=0.0, value=0.0)
-        fee_pct = 0.5
+        st.markdown("#### 2. Kalkulator Averaging Down")
+        avg_price1 = st.number_input("Harga Beli Pertama (Rp):", min_value=0.0, value=0.0, key="avg_p1")
+        avg_qty1 = st.number_input(f"Jumlah Koin {symbol} Beli Pertama:", min_value=0.0, value=0.0, key="avg_q1")
         
-        if conv_price > 0:
-            nett_rp = conv_rupiah * (1 - (fee_pct/100))
-            estimasi_koin = nett_rp / conv_price
-            st.metric(f"Estimasi Koin {symbol} Diperoleh:", f"{estimasi_koin:.6f} {symbol}")
-            st.caption(f"*Sudah termasuk potongan estimasi fee ~{fee_pct}% Indodax.")
+        avg_price2 = st.number_input("Harga Beli Kedua / Serok (Rp):", min_value=0.0, value=0.0, key="avg_p2")
+        avg_qty2 = st.number_input(f"Jumlah Koin {symbol} Beli Kedua:", min_value=0.0, value=0.0, key="avg_q2")
+
+        if (avg_qty1 + avg_qty2) > 0:
+            total_modal = (avg_price1 * avg_qty1) + (avg_price2 * avg_qty2)
+            total_koin = avg_qty1 + avg_qty2
+            avg_final_price = total_modal / total_koin
+            
+            st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
+            st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
+
+# ================= TAB 5: ASISTEN AI CHAT =================
+with tab_chat:
+    st.markdown("### 💬 Asisten Trading AI Rey472")
+    st.caption("Tanyakan apa saja seputar strategi crypto, cara membaca grafik, manajemen emosi, atau tips trading secara interaktif.")
+
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    user_query = st.chat_input("Tanyakan sesuatu ke AI Rey472...")
+
+    if user_query:
+        st.session_state.chat_history.append({"role": "user", "content": user_query})
+        with st.chat_message("user"):
+            st.markdown(user_query)
+
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            st.error("⚠️ API Key belum terkonfigurasi di Streamlit Secrets.")
         else:
-            st.metric(f"Estimasi Koin {symbol} Diperoleh:", f"0.000000 {symbol}")
+            with st.chat_message("assistant"):
+                with st.spinner("AI sedang berpikir..."):
+                    try:
+                        client = genai.Client(api_key=api_key)
+                        chat_prompt = f"""
+                        Kamu adalah Asisten Trading Crypto AI buatan Rey472 yang ramah, taktis, dan cerdas.
+                        Koin yang sedang diamati pengguna saat ini: {symbol}.
+                        Pertanyaan pengguna: {user_query}
+
+                        Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
+                        """
+                        response = client.models.generate_content(
+                            model='gemini-1.5-flash',
+                            contents=chat_prompt
+                        )
+                        reply = response.text
+                        st.markdown(reply)
+                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    except Exception as err:
+                        st.error(f"Gagal memproses pesan: {err}")
