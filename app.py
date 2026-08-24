@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus Mobile (Tidak merusak layout Desktop PC)
+# 🔒 CSS Khusus Mobile & Desktop Supaya Tidak Gepeng
 responsive_css = """
             <style>
             #MainMenu {display: none !important;}
@@ -22,7 +22,6 @@ responsive_css = """
             [data-testid="stStatusWidget"] {display: none !important;}
             div[class*="viewerBadge"] {display: none !important;}
 
-            /* Hanya ubah kolom jadi 100% jika layar benar-benar ukuran HP (Mobile) */
             @media screen and (max-width: 768px) {
                 .stTabs [data-baseweb="tab-list"] {
                     gap: 4px;
@@ -173,11 +172,38 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # ⚡ GRAFIK UNIVERSAL: Mendukung PC (Layar Lebar) dan Android sekaligus
+    # 📊 GRAFIK TRADINGVIEW (Stabil PC & Mobile)
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
-    tv_embed_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE%3A{symbol}USDT&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FJakarta"
-    components.iframe(tv_embed_url, height=500, scrolling=False)
+    tv_widget_code = f"""
+    <div class="tradingview-widget-container" style="height:480px;width:100%">
+      <div id="tradingview_chart" style="height:480px;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({{
+        "autosize": true,
+        "symbol": "BINANCE:{symbol}USDT",
+        "interval": "D",
+        "timezone": "Asia/Jakarta",
+        "theme": "dark",
+        "style": "1",
+        "locale": "id",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_chart"
+      }});
+      </script>
+    </div>
+    """
+    components.html(tv_widget_code, height=490)
+
+    # 🚀 Tombol Pintas Darurat jika Jaringan HP Sedang Lemot
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        st.link_button(f"🔗 Buka Chart {symbol} (Tab Baru)", f"https://id.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT", use_container_width=True)
+    with col_btn2:
+        st.link_button(f"🌐 Buka Market {symbol} (Indodax)", f"https://indodax.com/market/{symbol}IDR", use_container_width=True)
 
     st.markdown("---")
 
