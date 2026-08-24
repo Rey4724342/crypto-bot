@@ -161,88 +161,80 @@ with tab_main:
         if selected_info['logo_url']:
             st.image(selected_info['logo_url'], width=64)
     with col_title:
-        # Perbaikan Nama Judul (Tidak Double Lagi)
         st.subheader(f"{symbol} / IDR")
 
-    # 🚀 GRAFIK TRADINGVIEW INSTAN (Bentuk Kotak di Web, Tanpa Loading Lama Muter-muter)
+    # 🚀 GRAFIK TRADINGVIEW INSTAN (Bentuk Kotak di Web, Tanpa Loading Lama)
     st.markdown("#### 📊 Grafik Candlestick Market")
-    
-    # Menggunakan URL widget iframe resmi TradingView yang langsung dirender tanpa script berat
     tv_fast_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE:{symbol}USDT&interval=60&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Asia/Jakarta&withdateranges=1"
-    
     components.iframe(tv_fast_url, height=500, scrolling=False)
 
-    # Target Alert
-    st.markdown("#### 🚨 Set Target Alert Harga Kamu")
-    alert_target = st.number_input(f"Masukkan Harga Target Beli/Jual untuk {symbol} (Rp):", min_value=0, value=0, step=1000)
+    st.markdown("---")
 
-    if st.button("🔍 Mulaikan Analisis Market (AI & Sinyal)", use_container_width=True):
+    # 🎯 FITUR BARU: ANALISIS POSISI SAYA & MANAJEMEN RISIKO (MASUKKAN HARGA BELI)
+    st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
+    st.info("Masukkan harga beli awal kamu di bawah ini. AI akan menghitung posisi profit/rugi saat ini, serta merekomendasikan Stop Loss, Target Jual (TP), dan rekomendasi aksi berikutnya.")
+
+    col_input1, col_input2 = st.columns(2)
+    with col_input1:
+        my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0, value=1324307, step=1000)
+    with col_input2:
+        my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=1.0, step=0.1, format="%.4f")
+
+    if st.button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True):
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
             headers = {'User-Agent': 'Mozilla/5.0'}
             res = requests.get(url, headers=headers).json()['ticker']
             
-            harga = int(res['last'])
+            current_market_price = int(res['last'])
             high = int(res['high'])
             low = int(res['low'])
 
+            # Hitung Profit/Loss Kamu Saat Ini
+            if my_buy_price > 0:
+                pnl_rp = (current_market_price - my_buy_price) * my_amount_coin
+                pnl_pct = ((current_market_price - my_buy_price) / my_buy_price) * 100
+            else:
+                pnl_rp = 0
+                pnl_pct = 0
+
+            # Tampilkan Metrik Ringkas
             c1, c2, c3 = st.columns(3)
-            c1.metric(label="Harga Saat Ini (Indodax)", value=f"Rp {harga:,}")
-            c2.metric(label="High 24j", value=f"Rp {high:,}")
-            c3.metric(label="Low 24j", value=f"Rp {low:,}")
-
-            if alert_target > 0:
-                if harga <= alert_target:
-                    st.balloons()
-                    st.success(f"🎯 **ALERT DISENTUH!** Harga {symbol} saat ini (Rp {harga:,}) sudah mencapai target belimu (Rp {alert_target:,})!")
-                else:
-                    st.info(f"⏳ Harga saat ini masih di atas target alert (Selisih: Rp {harga - alert_target:,}).")
-
-            st.markdown("#### ⚡ Sinyal Indikator Teknikal Ringkas")
-            range_harga = high - low
-            posisi_harga = ((harga - low) / range_harga) * 100 if range_harga > 0 else 50
+            c1.metric(label="Harga Pasar Saat Ini", value=f"Rp {current_market_price:,}")
+            c2.metric(label="Modal/Harga Beli Kamu", value=f"Rp {my_buy_price:,}")
             
-            col_rsi, col_ma = st.columns(2)
-            with col_rsi:
-                if posisi_harga > 80:
-                    st.warning(f"⚠️ **Momentum:** Overbought ({posisi_harga:.1f}%). Waspada koreksi!")
-                elif posisi_harga < 20:
-                    st.success(f"💡 **Momentum:** Oversold ({posisi_harga:.1f}%). Potensi akumulasi!")
-                else:
-                    st.info(f"⚖️ **Momentum:** Netral ({posisi_harga:.1f}%).")
-                    
-            with col_ma:
-                avg_24h = (high + low) // 2
-                if harga > avg_24h:
-                    st.success(f"📈 **Tren Harian:** Bullish (di atas rata-rata Rp {avg_24h:,}).")
-                else:
-                    st.error(f"📉 **Tren Harian:** Bearish (di bawah rata-rata Rp {avg_24h:,}).")
+            if pnl_pct >= 0:
+                c3.metric(label="Status PnL (Keuntungan)", value=f"+Rp {int(pnl_rp):,}", delta=f"+{pnl_pct:.2f}%")
+            else:
+                c3.metric(label="Status PnL (Kerugian)", value=f"-Rp {abs(int(pnl_rp)):,}", delta=f"{pnl_pct:.2f}%")
 
             api_key = st.secrets.get("GEMINI_API_KEY")
 
             if not api_key:
                 st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
             else:
-                with st.spinner(f"AI sedang menganalisis ({trading_style})..."):
+                with st.spinner(f"AI sedang menganalisis posisi koin {symbol} kamu..."):
                     client = genai.Client(api_key=api_key)
                     
                     prompt = f"""
                     Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
                     Gaya Trading Pengguna: {trading_style}
                     
-                    Lakukan analisis teknikal dan sentimen singkat untuk aset berikut:
+                    Data Posisi Pengguna:
                     - Nama Aset: {selected_info['clean_name']}
-                    - Harga Saat Ini: Rp {harga:,}
+                    - Harga Beli Awal Pengguna: Rp {my_buy_price:,}
+                    - Harga Pasar Saat Ini: Rp {current_market_price:,}
+                    - Status Profit/Loss Sementara: {pnl_pct:.2f}% (Rp {int(pnl_rp):,})
                     - Harga Tertinggi 24j: Rp {high:,}
                     - Harga Terendah 24j: Rp {low:,}
 
-                    Berikan rekomendasi spesifik sesuai gaya {trading_style} dalam format poin rapi:
-                    1. 🌐 Sentimen Pasar AI Rey472 (Bullish / Neutral / Bearish)
-                    2. 🟢 Rekomendasi Aksi: (BUY / WAIT / SELL)
-                    3. 📥 Area Beli / Buy Entry (Range harga ideal dalam Rp)
-                    4. 🎯 Target Profit / TP (TP1 & TP2 dalam Rp)
-                    5. 🛑 Stop Loss / SL (Batas rugi dalam Rp)
-                    6. 💡 Ringkasan Analisis & Alasan
+                    Berdasarkan data di atas, berikan analisis dan panduan taktis dalam format poin rapi:
+                    1. 🌐 Analisis Posisi Saat Ini (Apakah posisi sedang aman, profit, atau waspada?)
+                    2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT SEBAGIAN / CUT LOSS / TAMBAH MUATAN / BUY ON DIP)
+                    3. 🛑 Saran Harga Stop Loss (SL) yang aman untuk mengamankan modal/profit.
+                    4. 🎯 Target Jual / Take Profit (TP1 & TP2) berikutnya dalam Rupiah.
+                    5. 📥 Saran Harga Beli Ulang / Tambah Muatan (Jika ingin akumulasi lagi di harga berapa).
+                    6. 💡 Alasan dan Tips Manajemen Risiko dari AI Rey472.
                     """
                     
                     response = client.models.generate_content(
@@ -250,7 +242,7 @@ with tab_main:
                         contents=prompt
                     )
                     
-                    st.markdown("### 🤖 Hasil Analisis AI Rey472 & Sentimen Pasar")
+                    st.markdown("### 🤖 Hasil Analisis & Rekomendasi AI Rey472")
                     st.info(response.text)
                     
         except Exception as e:
