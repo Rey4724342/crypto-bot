@@ -25,7 +25,7 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Initialize Session State untuk Jurnal dan Chat History
+# Initialize Session State
 if 'journal' not in st.session_state:
     st.session_state.journal = []
 if 'chat_history' not in st.session_state:
@@ -105,7 +105,7 @@ symbol = selected_info['symbol']
 
 st.markdown("---")
 
-# Navigasi Tab (Ditambahkan Tab Chatbot AI)
+# Navigasi Tab
 tab_main, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
     "📈 Dashboard Utama & AI", 
     "🔀 Perbandingan Koin", 
@@ -209,7 +209,6 @@ with tab_main:
             high = int(res['high'])
             low = int(res['low'])
 
-            # FITUR BARU: Alert Visual Kondisi Pasar
             if current_market_price <= low * 1.02:
                 st.warning("⚠️ **Perhatian Risk**: Harga pasar saat ini berada sangat dekat dengan titik terendah (Low 24j). Pertimbangkan konfirmasi pantulan support.")
             elif current_market_price >= high * 0.98:
@@ -262,8 +261,9 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
+                    # DIUBAH KE gemini-1.5-flash
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-1.5-flash',
                         contents=prompt
                     )
                     
@@ -360,7 +360,6 @@ with tab_calc:
         else:
             st.warning("⚠️ Masukkan harga entry dan stop loss yang valid.")
 
-    # FITUR BARU: Kalkulator Averaging Down
     with calc_col2:
         st.markdown("#### 2. Kalkulator Averaging Down")
         avg_price1 = st.number_input("Harga Beli Pertama (Rp):", min_value=0.0, value=0.0, key="avg_p1")
@@ -377,7 +376,7 @@ with tab_calc:
             st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
             st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
 
-# ================= TAB 5: FITUR BARU - ASISTEN AI CHAT =================
+# ================= TAB 5: ASISTEN AI CHAT =================
 with tab_chat:
     st.markdown("### 💬 Asisten Trading AI Rey472")
     st.caption("Tanyakan apa saja seputar strategi crypto, cara membaca grafik, manajemen emosi, atau tips trading secara interaktif.")
@@ -386,7 +385,7 @@ with tab_chat:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    user_query = st.chat_input("Tanyakan sesuatu ke AI Rey472 (contoh: 'Bagaimana cara menentukan titik Stop Loss yang aman?')...")
+    user_query = st.chat_input("Tanyakan sesuatu ke AI Rey472...")
 
     if user_query:
         st.session_state.chat_history.append({"role": "user", "content": user_query})
@@ -408,8 +407,9 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
+                        # DIUBAH KE gemini-1.5-flash
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-1.5-flash',
                             contents=chat_prompt
                         )
                         reply = response.text
