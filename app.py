@@ -21,7 +21,6 @@ hide_streamlit_style = """
             [data-testid="stDecoration"] {display: none !important;}
             [data-testid="stStatusWidget"] {display: none !important;}
             
-            /* Sembunyikan Logo Merah / Streamlit Badge */
             div[class*="viewerBadge"] {display: none !important;}
             div[class*="stEmotioncache"] {background: transparent;}
             iframe[title="data-testid"] {display: none !important;}
@@ -163,22 +162,45 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🚀 GRAFIK TRADINGVIEW INSTAN (Bentuk Kotak di Web, Tanpa Loading Lama)
+    # 🚀 GRAFIK TRADINGVIEW REALTIME INSTAN (Menggunakan HTML Script Resmi agar langsung muncul tanpa loading muter-muter)
     st.markdown("#### 📊 Grafik Candlestick Market")
-    tv_fast_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE:{symbol}USDT&interval=60&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Asia/Jakarta&withdateranges=1"
-    components.iframe(tv_fast_url, height=500, scrolling=False)
+    
+    tv_html_code = f"""
+    <div class="tradingview-widget-container" style="height:500px;width:100%">
+      <div id="tradingview_chart" style="height:100%;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget(
+      {{
+        "width": "100%",
+        "height": 500,
+        "symbol": "BINANCE:{symbol}USDT",
+        "interval": "D",
+        "timezone": "Asia/Jakarta",
+        "theme": "dark",
+        "style": "1",
+        "locale": "id",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_chart"
+      }});
+      </script>
+    </div>
+    """
+    components.html(tv_html_code, height=510)
 
     st.markdown("---")
 
-    # 🎯 FITUR BARU: ANALISIS POSISI SAYA & MANAJEMEN RISIKO (MASUKKAN HARGA BELI)
+    # 🎯 ANALISIS POSISI PORTOFOLIO SAYA (Default 0)
     st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
-    st.info("Masukkan harga beli awal kamu di bawah ini. AI akan menghitung posisi profit/rugi saat ini, serta merekomendasikan Stop Loss, Target Jual (TP), dan rekomendasi aksi berikutnya.")
+    st.info("Masukkan harga beli awal kamu di bawah ini (mulai dari 0). AI akan menghitung posisi profit/rugi, Stop Loss, dan Target Jual (TP) secara akurat.")
 
     col_input1, col_input2 = st.columns(2)
     with col_input1:
-        my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0, value=1324307, step=1000)
+        my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=100.0, format="%.2f")
     with col_input2:
-        my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=1.0, step=0.1, format="%.4f")
+        my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
 
     if st.button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True):
         try:
@@ -190,7 +212,6 @@ with tab_main:
             high = int(res['high'])
             low = int(res['low'])
 
-            # Hitung Profit/Loss Kamu Saat Ini
             if my_buy_price > 0:
                 pnl_rp = (current_market_price - my_buy_price) * my_amount_coin
                 pnl_pct = ((current_market_price - my_buy_price) / my_buy_price) * 100
@@ -198,15 +219,17 @@ with tab_main:
                 pnl_rp = 0
                 pnl_pct = 0
 
-            # Tampilkan Metrik Ringkas
             c1, c2, c3 = st.columns(3)
             c1.metric(label="Harga Pasar Saat Ini", value=f"Rp {current_market_price:,}")
-            c2.metric(label="Modal/Harga Beli Kamu", value=f"Rp {my_buy_price:,}")
+            c2.metric(label="Modal/Harga Beli Kamu", value=f"Rp {int(my_buy_price):,}")
             
-            if pnl_pct >= 0:
-                c3.metric(label="Status PnL (Keuntungan)", value=f"+Rp {int(pnl_rp):,}", delta=f"+{pnl_pct:.2f}%")
+            if my_buy_price > 0:
+                if pnl_pct >= 0:
+                    c3.metric(label="Status PnL (Keuntungan)", value=f"+Rp {int(pnl_rp):,}", delta=f"+{pnl_pct:.2f}%")
+                else:
+                    c3.metric(label="Status PnL (Kerugian)", value=f"-Rp {abs(int(pnl_rp)):,}", delta=f"{pnl_pct:.2f}%")
             else:
-                c3.metric(label="Status PnL (Kerugian)", value=f"-Rp {abs(int(pnl_rp)):,}", delta=f"{pnl_pct:.2f}%")
+                c3.metric(label="Status PnL", value="Belum diisi (0)")
 
             api_key = st.secrets.get("GEMINI_API_KEY")
 
@@ -290,7 +313,7 @@ with tab_journal:
     with st.form("journal_form"):
         j_coin = st.text_input("Nama Koin / Ticker:", value=symbol)
         j_type = st.selectbox("Tipe Transaksi:", ["BUY / BELI", "SELL / JUAL"])
-        j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=1, value=100000)
+        j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=1.0, value=0.0)
         j_notes = st.text_area("Catatan Alasan Trade / Strategi:")
         
         submitted = st.form_submit_button("➕ Simpan ke Catatan")
@@ -298,7 +321,7 @@ with tab_journal:
             st.session_state.journal.append({
                 "Koin": j_coin,
                 "Tipe": j_type,
-                "Harga": f"Rp {j_price:,}",
+                "Harga": f"Rp {j_price:,.0f}",
                 "Catatan": j_notes
             })
             st.success("Catatan trading tersimpan!")
@@ -319,12 +342,12 @@ with tab_calc:
 
     with calc_col1:
         st.markdown("#### 1. Risk / Reward Calculator")
-        modal_rp = st.number_input("Modal Trading Kamu (Rp):", min_value=10000, value=1000000, step=50000)
+        modal_rp = st.number_input("Modal Trading Kamu (Rp):", min_value=0.0, value=0.0, step=50000.0)
         risk_pct = st.slider("Batas Toleransi Rugi per Trade (% Modal):", min_value=1.0, max_value=10.0, value=2.0, step=0.5)
-        entry_price = st.number_input("Rencana Harga Beli (Entry Rp):", min_value=1, value=100000)
-        sl_price = st.number_input("Rencana Stop Loss (SL Rp):", min_value=1, value=95000)
+        entry_price = st.number_input("Rencana Harga Beli (Entry Rp):", min_value=0.0, value=0.0)
+        sl_price = st.number_input("Rencana Stop Loss (SL Rp):", min_value=0.0, value=0.0)
 
-        if entry_price > sl_price:
+        if entry_price > 0 and sl_price > 0 and entry_price > sl_price:
             potensi_rugi_per_koin = entry_price - sl_price
             persen_rugi_koin = (potensi_rugi_per_koin / entry_price) * 100
             maks_resiko_rp = modal_rp * (risk_pct / 100)
@@ -333,16 +356,18 @@ with tab_calc:
             st.info(f"💡 Maksimal Rugi Aman: **Rp {int(maks_resiko_rp):,}**")
             st.success(f"💡 Alokasi Beli Ideal: **Rp {int(min(rekomendasi_posisi_rp, modal_rp)):,}**")
         else:
-            st.warning("⚠️ Harga Stop Loss harus lebih rendah dari harga Entry Beli!")
+            st.warning("⚠️ Masukkan harga entry dan stop loss yang valid (Entry > Stop Loss).")
 
     with calc_col2:
         st.markdown("#### 2. Instant Converter Rupiah ➡️ Koin")
-        conv_rupiah = st.number_input("Jumlah Rupiah Beli:", min_value=10000, value=500000, step=50000)
-        conv_price = st.number_input(f"Harga Koin {symbol} (Rp):", min_value=1, value=100000)
+        conv_rupiah = st.number_input("Jumlah Rupiah Beli:", min_value=0.0, value=0.0, step=50000.0)
+        conv_price = st.number_input(f"Harga Koin {symbol} (Rp):", min_value=0.0, value=0.0)
         fee_pct = 0.5
         
-        nett_rp = conv_rupiah * (1 - (fee_pct/100))
-        estimasi_koin = nett_rp / conv_price if conv_price > 0 else 0
-        
-        st.metric(f"Estimasi Koin {symbol} Diperoleh:", f"{estimasi_koin:.6f} {symbol}")
-        st.caption(f"*Sudah termasuk potongan estimasi fee ~{fee_pct}% Indodax.")
+        if conv_price > 0:
+            nett_rp = conv_rupiah * (1 - (fee_pct/100))
+            estimasi_koin = nett_rp / conv_price
+            st.metric(f"Estimasi Koin {symbol} Diperoleh:", f"{estimasi_koin:.6f} {symbol}")
+            st.caption(f"*Sudah termasuk potongan estimasi fee ~{fee_pct}% Indodax.")
+        else:
+            st.metric(f"Estimasi Koin {symbol} Diperoleh:", f"0.000000 {symbol}")
