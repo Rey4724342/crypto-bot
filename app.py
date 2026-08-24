@@ -10,8 +10,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus Optimization & Hiding Header/Footer
-hide_streamlit_style = """
+# 🔒 CSS Responsif Khusus Komputer & Android (Mobile Optimization)
+responsive_css = """
             <style>
             #MainMenu {display: none !important;}
             header {display: none !important;}
@@ -21,9 +21,28 @@ hide_streamlit_style = """
             [data-testid="stDecoration"] {display: none !important;}
             [data-testid="stStatusWidget"] {display: none !important;}
             div[class*="viewerBadge"] {display: none !important;}
+
+            /* Perbaikan Tampilan untuk Layar HP Android */
+            @media only screen and (max-width: 768px) {
+                .stTabs [data-baseweb="tab-list"] {
+                    gap: 4px;
+                    overflow-x: auto;
+                    flex-wrap: nowrap;
+                }
+                .stTabs [data-baseweb="tab"] {
+                    font-size: 12px;
+                    padding: 8px 10px;
+                }
+                /* Kolom agar bertumpuk ke bawah di HP */
+                [data-testid="column"] {
+                    width: 100% !important;
+                    flex: 1 1 100% !important;
+                    min-width: 100% !important;
+                }
+            }
             </style>
             """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(responsive_css, unsafe_allow_html=True)
 
 if 'journal' not in st.session_state:
     st.session_state.journal = []
@@ -157,44 +176,26 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # ⚡ TradingView Optimized Widget
+    # ⚡ TradingView Super Cepat & Responsif di Komputer & Android
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
-    tv_html_code = f"""
-    <div class="tradingview-widget-container" style="height:500px;width:100%">
-      <div id="tradingview_chart" style="height:500px;width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({{
-        "autosize": true,
-        "symbol": "BINANCE:{symbol}USDT",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "hide_legend": false,
-        "save_image": false,
-        "container_id": "tradingview_chart"
-      }});
-      </script>
-    </div>
-    """
-    components.html(tv_html_code, height=510)
+    tv_mobile_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE%3A{symbol}USDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=%5B%5D&theme=dark&style=1&timezone=Asia%2FJakarta"
+    components.iframe(tv_mobile_url, height=450, scrolling=False)
 
     st.markdown("---")
 
     st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
-    st.info("Masukkan harga beli awal kamu di bawah ini (mulai dari 0). AI akan menghitung posisi profit/rugi, Stop Loss, dan Target Jual (TP) secara kilat.")
+    st.caption("💡 *Ketik angka polos tanpa titik/koma (misal: 1324307).*")
 
-    col_input1, col_input2 = st.columns(2)
-    with col_input1:
-        my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=100.0, format="%.2f")
-    with col_input2:
-        my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
+    with st.form("portfolio_form"):
+        col_input1, col_input2 = st.columns(2)
+        with col_input1:
+            my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
+        with col_input2:
+            my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
+        
+        btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True)
 
-    if st.button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True):
+    if btn_submit:
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
             headers = {'User-Agent': 'Mozilla/5.0'}
@@ -256,7 +257,6 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
-                    # ✅ Menggunakan gemini-3.6-flash sesuai rekomendasi API terbaru
                     response = client.models.generate_content(
                         model='gemini-3.6-flash',
                         contents=prompt
@@ -402,7 +402,6 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
-                        # ✅ Menggunakan gemini-3.6-flash
                         response = client.models.generate_content(
                             model='gemini-3.6-flash',
                             contents=chat_prompt
