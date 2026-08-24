@@ -162,7 +162,7 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🚀 GRAFIK TRADINGVIEW REALTIME INSTAN (Menggunakan HTML Script Resmi agar langsung muncul tanpa loading muter-muter)
+    # 🚀 GRAFIK TRADINGVIEW REALTIME INSTAN
     st.markdown("#### 📊 Grafik Candlestick Market")
     
     tv_html_code = f"""
@@ -313,7 +313,7 @@ with tab_journal:
     with st.form("journal_form"):
         j_coin = st.text_input("Nama Koin / Ticker:", value=symbol)
         j_type = st.selectbox("Tipe Transaksi:", ["BUY / BELI", "SELL / JUAL"])
-        j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=1.0, value=0.0)
+        j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=0.0, value=0.0, step=100.0)
         j_notes = st.text_area("Catatan Alasan Trade / Strategi:")
         
         submitted = st.form_submit_button("➕ Simpan ke Catatan")
@@ -332,7 +332,7 @@ with tab_journal:
         st.dataframe(df_j, use_container_width=True)
         if st.button("🗑️ Hapus Semua Catatan"):
             st.session_state.journal = []
-            st.experimental_rerun()
+            st.rerun()
 
 # ================= TAB 4: KALKULATOR & CONVERTER =================
 with tab_calc:
