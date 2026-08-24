@@ -7,7 +7,7 @@ import re
 from google import genai
 
 st.set_page_config(
-    page_title="Crypto AI Analyst Pro - Rey472", 
+    page_title="Crypto AI Trading Hub & Analyst Pro - Rey472", 
     page_icon="🪙", 
     layout="wide"
 )
@@ -119,7 +119,6 @@ def get_crypto_news_robust():
             link = item.find('link').text if item.find('link') is not None else '#'
             pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ''
             
-            # Ekstrak gambar
             image_url = ""
             media_content = item.find('media:content', namespaces)
             if media_content is not None and 'url' in media_content.attrib:
@@ -136,7 +135,6 @@ def get_crypto_news_robust():
             if not image_url:
                 image_url = "https://images.cointelegraph.com/images/1200_aHR0cHM6Ly9zMy5jb2ludGVsZWdyYXBoLmNvbS91cGxvYWRzLzIwMjEtMDMvYTM1ZDgyMGUtZGVhMS00OWViLThkYTAtOGE4OGFiZmM0ODNmLmpwZw==.jpg"
 
-            # Ekstrak deskripsi ringkas
             description = ""
             desc_node = item.find('description')
             if desc_node is not None and desc_node.text:
@@ -152,7 +150,7 @@ def get_crypto_news_robust():
             })
             
         return news_items
-    except Exception as e:
+    except Exception:
         return []
 
 pairs_data = get_all_indodax_pairs()
@@ -185,8 +183,9 @@ symbol = selected_info['symbol']
 
 st.markdown("---")
 
-tab_main, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
+tab_main, tab_edu, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
     "📈 Dashboard Utama & AI",
+    "🎓 Akademi Crypto & Chart",
     "📰 Sentimen & Berita Market",
     "🔀 Perbandingan Koin", 
     "📓 Jurnal Trading", 
@@ -266,7 +265,6 @@ with tab_main:
     """
     components.html(tv_widget_code, height=490)
 
-    # 🚀 Tombol Pintas
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         st.link_button(f"🔗 Buka Chart {symbol} (Tab Baru)", f"https://id.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT", use_container_width=True)
@@ -360,7 +358,137 @@ with tab_main:
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
 
-# ================= TAB 2: SENTIMEN & BERITA MARKET =================
+# ================= TAB 2: AKADEMI CRYPTO & CHART (FITUR BARU) =================
+with tab_edu:
+    st.markdown("### 🎓 Akademi Trading Crypto: Dari Nol Sampai Paham")
+    st.caption("Pelajari konsep dasar crypto, cara membaca grafik candlestick, dan strategi trading menggunakan alat interaktif.")
+
+    m1, m2, m3, m4 = st.tabs([
+        "💡 1. Dasar Crypto", 
+        "🕯️ 2. Anatomi Candlestick", 
+        "📉 3. Support & Resistance", 
+        "📊 4. Lab Praktik TradingView"
+    ])
+
+    # --- Modul 1: Dasar ---
+    with m1:
+        st.markdown("#### 🟢 Apa itu Crypto & Trading?")
+        st.write("""
+        **Cryptocurrency (Aset Kripto)** adalah mata uang digital yang menggunakan teknologi *Blockchain* (catatan transaksi terdesentralisasi yang aman).
+        
+        * **Beli Murah, Jual Mahal (Spot Trading):** Prinsip dasar trading crypto adalah membeli koin saat harga rendah dan menjualnya ketika harga sudah naik.
+        * **Sifat Pasar 24/7:** Pasar crypto buka **24 jam non-stop** tanpa libur, berbeda dari pasar saham.
+        * **Volatilitas Tinggi:** Harga bisa naik atau turun dengan sangat cepat dalam waktu singkat.
+        """)
+        
+        st.info("💡 **Tips Pemula:** Selalu pakai **uang dingin** (uang yang tidak dipakai untuk kebutuhan sehari-hari) saat belajar trading!")
+
+    # --- Modul 2: Animasi Candlestick ---
+    with m2:
+        st.markdown("#### 🕯️ Cara Membaca Grafik Candlestick")
+        st.write("Candlestick menunjukkan pergerakan harga dalam periode waktu tertentu (misal: 1 Hari, 1 Jam, atau 15 Menit).")
+
+        candlestick_anim = """
+        <div style="display: flex; justify-content: space-around; background-color: #11141c; padding: 20px; border-radius: 12px; font-family: sans-serif; color: white;">
+            <div style="text-align: center; width: 45%;">
+                <h4 style="color: #00E676; margin-bottom: 5px;">🟢 Hijau (Bullish)</h4>
+                <p style="font-size: 12px; color: #aaa;">Harga NAIK (Penutupan > Pembukaan)</p>
+                <svg width="100" height="180">
+                    <!-- High/Low Line -->
+                    <line x1="50" y1="10" x2="50" y2="170" stroke="#00E676" stroke-width="3" />
+                    <!-- Body Animation -->
+                    <rect x="30" y="40" width="40" height="90" fill="#00E676" rx="4">
+                        <animate attributeName="height" values="20;90;20" dur="3s" repeatCount="indefinite" />
+                        <animate attributeName="y" values="110;40;110" dur="3s" repeatCount="indefinite" />
+                    </rect>
+                </svg>
+                <div style="font-size: 11px; text-align: left; background: #1a202c; padding: 8px; border-radius: 6px;">
+                    • <b>Atas Sumbu:</b> Harga Tertinggi (High)<br>
+                    • <b>Atas Body:</b> Harga Tutup (Close)<br>
+                    • <b>Bawah Body:</b> Harga Buka (Open)<br>
+                    • <b>Bawah Sumbu:</b> Harga Terendah (Low)
+                </div>
+            </div>
+
+            <div style="text-align: center; width: 45%;">
+                <h4 style="color: #FF5252; margin-bottom: 5px;">🔴 Merah (Bearish)</h4>
+                <p style="font-size: 12px; color: #aaa;">Harga TURUN (Penutupan < Pembukaan)</p>
+                <svg width="100" height="180">
+                    <!-- High/Low Line -->
+                    <line x1="50" y1="10" x2="50" y2="170" stroke="#FF5252" stroke-width="3" />
+                    <!-- Body Animation -->
+                    <rect x="30" y="40" width="40" height="90" fill="#FF5252" rx="4">
+                        <animate attributeName="height" values="20;90;20" dur="3s" repeatCount="indefinite" />
+                    </rect>
+                </svg>
+                <div style="font-size: 11px; text-align: left; background: #1a202c; padding: 8px; border-radius: 6px;">
+                    • <b>Atas Sumbu:</b> Harga Tertinggi (High)<br>
+                    • <b>Atas Body:</b> Harga Buka (Open)<br>
+                    • <b>Bawah Body:</b> Harga Tutup (Close)<br>
+                    • <b>Bawah Sumbu:</b> Harga Terendah (Low)
+                </div>
+            </div>
+        </div>
+        """
+        components.html(candlestick_anim, height=310)
+
+    # --- Modul 3: Support & Resistance ---
+    with m3:
+        st.markdown("#### 📉 Mengenal Support & Resistance")
+        
+        col_sup, col_res = st.columns(2)
+        with col_sup:
+            st.success("🧱 **Support (Lantai Harga)**")
+            st.write("""
+            Area harga di mana permintaan (pembeli) cukup kuat untuk menahan harga agar tidak turun lebih dalam.
+            * **Analogi:** Seperti *lantai rumah*, bola yang jatuh ke lantai akan memantul ke atas.
+            * **Aksi Trading:** Area potensial untuk **BELI (Buy)**.
+            """)
+        with col_res:
+            st.error("🧱 **Resistance (Atap Harga)**")
+            st.write("""
+            Area harga di mana penawaran (penjual) cukup kuat untuk menahan harga agar tidak naik lebih tinggi.
+            * **Analogi:** Seperti *atap rumah*, bola yang dilempar ke atas akan menabrak atap lalu memantul turun.
+            * **Aksi Trading:** Area potensial untuk **JUAL / TAKE PROFIT**.
+            """)
+
+    # --- Modul 4: Lab Praktik TradingView ---
+    with m4:
+        st.markdown("#### 📊 Laboratorium Praktik Charting TradingView")
+        st.write("Gunakan chart interaktif ini untuk latihan menggambar garis Support/Resistance, menambahkan indikator RSI, atau analisa tren:")
+
+        st.caption("🎯 **Latihan Tugas Pemula:**")
+        st.markdown("""
+        1. Klik ikon **Line/Garis** di panel kiri chart untuk mencoba menggambar garis tren (*Trendline*).
+        2. Cari titik terendah koin (*Support*) dan titik tertinggi (*Resistance*).
+        3. Uji ubah timeframe di bagian atas (misal dari `1D` ke `1H`).
+        """)
+
+        practice_chart_code = """
+        <div class="tradingview-widget-container" style="height:500px;width:100%">
+          <div id="tradingview_practice" style="height:500px;width:100%"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+          <script type="text/javascript">
+          new TradingView.widget({
+            "autosize": true,
+            "symbol": "BINANCE:BTCUSDT",
+            "interval": "D",
+            "timezone": "Asia/Jakarta",
+            "theme": "dark",
+            "style": "1",
+            "locale": "id",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "save_image": false,
+            "container_id": "tradingview_practice"
+          });
+          </script>
+        </div>
+        """
+        components.html(practice_chart_code, height=510)
+
+# ================= TAB 3: SENTIMEN & BERITA MARKET =================
 with tab_sentimen:
     st.markdown("### 🧠 Sentimen Pasar Crypto Global & Berita Real-Time")
     
@@ -376,15 +504,15 @@ with tab_sentimen:
             val_num = 50
             
         if val_num <= 25:
-            color_code = "#FF4D4D" # Extreme Fear (Red)
+            color_code = "#FF4D4D"
         elif val_num <= 45:
-            color_code = "#FFA500" # Fear (Orange)
+            color_code = "#FFA500"
         elif val_num <= 55:
-            color_code = "#FFD700" # Neutral (Yellow)
+            color_code = "#FFD700"
         elif val_num <= 75:
-            color_code = "#90EE90" # Greed (Light Green)
+            color_code = "#90EE90"
         else:
-            color_code = "#00E676" # Extreme Greed (Bright Green)
+            color_code = "#00E676"
 
         st.markdown(
             f"""
@@ -424,7 +552,7 @@ with tab_sentimen:
         else:
             st.info("Gagal mengambil berita. Silakan muat ulang halaman.")
 
-# ================= TAB 3: PERBANDINGAN KOIN =================
+# ================= TAB 4: PERBANDINGAN KOIN =================
 with tab_compare:
     st.markdown("### 🔀 Bandingkan 2 Koin Indodax")
     comp_col1, comp_col2 = st.columns(2)
@@ -459,7 +587,7 @@ with tab_compare:
         except Exception as err:
             st.error(f"Gagal membandingkan koin: {err}")
 
-# ================= TAB 4: JURNAL TRADING =================
+# ================= TAB 5: JURNAL TRADING =================
 with tab_journal:
     st.markdown("### 📓 Jurnal Catatan Trading")
     
@@ -487,7 +615,7 @@ with tab_journal:
             st.session_state.journal = []
             st.rerun()
 
-# ================= TAB 5: KALKULATOR & AVERAGING =================
+# ================= TAB 6: KALKULATOR & AVERAGING =================
 with tab_calc:
     st.markdown("### 🧮 Kalkulator Trading & Averaging Down")
     
@@ -527,7 +655,7 @@ with tab_calc:
             st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
             st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
 
-# ================= TAB 6: ASISTEN AI CHAT =================
+# ================= TAB 7: ASISTEN AI CHAT =================
 with tab_chat:
     st.markdown("### 💬 Asisten Trading AI Rey472")
     st.caption("Tanyakan apa saja seputar strategi crypto, cara membaca grafik, manajemen emosi, atau tips trading secara interaktif.")
