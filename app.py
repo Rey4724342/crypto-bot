@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import pandas as pd
 from google import genai
@@ -9,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar, dan Logo Merah di HP & PC
+# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar, dan Logo Merah (Crown/Viewer Badge) di HP & PC
 hide_streamlit_style = """
             <style>
             #MainMenu {display: none !important;}
@@ -20,28 +21,33 @@ hide_streamlit_style = """
             [data-testid="stDecoration"] {display: none !important;}
             [data-testid="stStatusWidget"] {display: none !important;}
             
-            /* Sembunyikan Logo Merah / Streamlit Badge */
+            /* Paksa Hilangkan Logo Merah / Streamlit Badge Pojok Kanan Bawah */
             div[class*="viewerBadge"] {display: none !important;}
             div[class*="stEmotioncache"] {background: transparent;}
             iframe[title="data-testid"] {display: none !important;}
             .viewerBadge_container__1A53K {display: none !important;}
             .viewerBadge_link__1S137 {display: none !important;}
+            #root > div:nth-child(1) > div.withScreencast > div > div > div > section > div.stEmotioncache-1dp5239 {display: none !important;}
+            
+            /* Floating Badge Suppressor */
             [data-testid="manage-app-button"] {display: none !important;}
+            .stApp > footer {display: none !important;}
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Initialize Session State
+# Initialize Session State for Trading Journal
 if 'journal' not in st.session_state:
     st.session_state.journal = []
 
-# Fungsi Data Indodax
+# 1. Fungsi Ambil Data Pasangan Indodax
 @st.cache_data(ttl=600)
 def get_indodax_summary():
     try:
         url = "https://indodax.com/api/summaries"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        return requests.get(url, headers=headers).json()
+        res = requests.get(url, headers=headers).json()
+        return res
     except Exception:
         return {}
 
@@ -83,9 +89,10 @@ pairs_data = get_all_indodax_pairs()
 # Header Utama
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
 st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
+
 st.markdown("---")
 
-# Menu Utama di Halaman Depan
+# ⚙️ MENU UTAMA DI HALAMAN DEPAN (Ramah Tampilan HP & Laptop)
 st.markdown("### ⚙️ Pengaturan Koin & Strategi")
 menu_col1, menu_col2 = st.columns(2)
 
@@ -109,6 +116,7 @@ symbol = selected_info['symbol']
 
 st.markdown("---")
 
+# TAB SYSTEM FOR BETTER ORGANIZATIONS
 tab_main, tab_compare, tab_journal, tab_calc = st.tabs([
     "📈 Dashboard Utama & AI", 
     "🔀 Perbandingan Koin", 
@@ -118,6 +126,7 @@ tab_main, tab_compare, tab_journal, tab_calc = st.tabs([
 
 # ================= TAB 1: DASHBOARD UTAMA =================
 with tab_main:
+    # Top Market Movers
     st.markdown("### 🔥 Top Market Movers (24 Jam)")
     summary_data = get_indodax_summary()
 
@@ -160,31 +169,40 @@ with tab_main:
         if selected_info['logo_url']:
             st.image(selected_info['logo_url'], width=64)
     with col_title:
-        st.subheader(f"{symbol} / IDR ({selected_info['clean_name']})")
+        st.subheader(f"{selected_info['clean_name']} / IDR")
 
-    # 🚀 GANTI GRAFIK BERAT DENGAN TOMBOL AKSES CHART INSTAN (ANTI-LOADING)
-    st.markdown("#### 📊 Grafik Market & Charting")
-    
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        st.link_button(
-            f"📈 Buka Full Chart {symbol} di TradingView", 
-            f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT",
-            use_container_width=True
-        )
-    with chart_col2:
-        st.link_button(
-            f"🌐 Cek Market {symbol} di Indodax", 
-            f"https://indodax.com/market/{symbol.upper()}IDR",
-            use_container_width=True
-        )
+    # Embed Grafik TradingView
+    st.markdown("#### 📊 Grafik Candlestick Market")
+    tv_symbol = f"BINANCE:{symbol}USDT" if symbol != "BTC" else "BINANCE:BTCUSDT"
 
-    st.markdown("")
+    tradingview_html = f"""
+    <div class="tradingview-widget-container" style="height:480px;width:100%;">
+      <div id="tradingview_chart" style="height:480px;width:100%;"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({{
+        "autosize": true,
+        "symbol": "{tv_symbol}",
+        "interval": "60",
+        "timezone": "Asia/Jakarta",
+        "theme": "dark",
+        "style": "1",
+        "locale": "id",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_chart"
+      }});
+      </script>
+    </div>
+    """
+    components.html(tradingview_html, height=500)
 
-    # Target Alert
+    # Price Alert Setup
     st.markdown("#### 🚨 Set Target Alert Harga Kamu")
     alert_target = st.number_input(f"Masukkan Harga Target Beli/Jual untuk {symbol} (Rp):", min_value=0, value=0, step=1000)
 
+    # Tombol Analisis AI & Ambil Ticker
     if st.button("🔍 Mulaikan Analisis Market (AI & Sinyal)", use_container_width=True):
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
@@ -200,13 +218,15 @@ with tab_main:
             c2.metric(label="High 24j", value=f"Rp {high:,}")
             c3.metric(label="Low 24j", value=f"Rp {low:,}")
 
+            # Check Alert Status
             if alert_target > 0:
                 if harga <= alert_target:
                     st.balloons()
-                    st.success(f"🎯 **ALERT DISENTUH!** Harga {symbol} saat ini (Rp {harga:,}) sudah mencapai target belimu (Rp {alert_target:,})!")
+                    st.success(f"🎯 **ALERT DISENTUH!** Harga {symbol} saat ini (Rp {harga:,}) sudah mencapai/dibawah target belimu (Rp {alert_target:,})!")
                 else:
-                    st.info(f"⏳ Harga saat ini masih di atas target alert (Selisih: Rp {harga - alert_target:,}).")
+                    st.info(f"⏳ Harga saat ini masih diatas target alert kamu (Selisih: Rp {harga - alert_target:,}).")
 
+            # Indikator Sinyal Teknikal
             st.markdown("#### ⚡ Sinyal Indikator Teknikal Ringkas")
             range_harga = high - low
             posisi_harga = ((harga - low) / range_harga) * 100 if range_harga > 0 else 50
@@ -214,19 +234,20 @@ with tab_main:
             col_rsi, col_ma = st.columns(2)
             with col_rsi:
                 if posisi_harga > 80:
-                    st.warning(f"⚠️ **Momentum:** Overbought ({posisi_harga:.1f}%). Waspada koreksi!")
+                    st.warning(f"⚠️ **Kondisi Momentum:** Mendekati Overbought ({posisi_harga:.1f}%). Waspada koreksi!")
                 elif posisi_harga < 20:
-                    st.success(f"💡 **Momentum:** Oversold ({posisi_harga:.1f}%). Potensi akumulasi!")
+                    st.success(f"💡 **Kondisi Momentum:** Mendekati Oversold ({posisi_harga:.1f}%). Potensi akumulasi!")
                 else:
-                    st.info(f"⚖️ **Momentum:** Netral ({posisi_harga:.1f}%).")
+                    st.info(f"⚖️ **Kondisi Momentum:** Netral ({posisi_harga:.1f}%).")
                     
             with col_ma:
                 avg_24h = (high + low) // 2
                 if harga > avg_24h:
-                    st.success(f"📈 **Tren Harian:** Bullish (di atas rata-rata Rp {avg_24h:,}).")
+                    st.success(f"📈 **Tren Harian:** Di atas rata-rata 24j (Rp {avg_24h:,}). Bullish pendek.")
                 else:
-                    st.error(f"📉 **Tren Harian:** Bearish (di bawah rata-rata Rp {avg_24h:,}).")
+                    st.error(f"📉 **Tren Harian:** Di bawah rata-rata 24j (Rp {avg_24h:,}). Bearish pendek.")
 
+            # Eksekusi AI
             api_key = st.secrets.get("GEMINI_API_KEY")
 
             if not api_key:
