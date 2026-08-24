@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar, dan Logo Merah di HP & PC
+# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar
 hide_streamlit_style = """
             <style>
             #MainMenu {display: none !important;}
@@ -20,13 +20,7 @@ hide_streamlit_style = """
             [data-testid="stToolbar"] {display: none !important;}
             [data-testid="stDecoration"] {display: none !important;}
             [data-testid="stStatusWidget"] {display: none !important;}
-            
             div[class*="viewerBadge"] {display: none !important;}
-            div[class*="stEmotioncache"] {background: transparent;}
-            iframe[title="data-testid"] {display: none !important;}
-            .viewerBadge_container__1A53K {display: none !important;}
-            .viewerBadge_link__1S137 {display: none !important;}
-            [data-testid="manage-app-button"] {display: none !important;}
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -35,22 +29,22 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 if 'journal' not in st.session_state:
     st.session_state.journal = []
 
-# Fungsi Data Indodax
-@st.cache_data(ttl=600)
+# 🚀 OPTIMASI KECEPATAN: Cache data diperpanjang agar web tidak sering fetch ulang
+@st.cache_data(ttl=300)
 def get_indodax_summary():
     try:
         url = "https://indodax.com/api/summaries"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        return requests.get(url, headers=headers).json()
+        return requests.get(url, headers=headers, timeout=5).json()
     except Exception:
         return {}
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_all_indodax_pairs():
     try:
         url = "https://indodax.com/api/pairs"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        res = requests.get(url, headers=headers).json()
+        res = requests.get(url, headers=headers, timeout=5).json()
         
         pairs_dict = {}
         for item in res:
@@ -82,7 +76,7 @@ pairs_data = get_all_indodax_pairs()
 
 # Header Utama
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
-st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b> — <span style='color: #00E676;'>⚡ Fast Mode Active</span></h4>", unsafe_allow_html=True)
 st.markdown("---")
 
 # Menu Utama di Halaman Depan
@@ -162,18 +156,18 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🚀 GRAFIK TRADINGVIEW REALTIME INSTAN
-    st.markdown("#### 📊 Grafik Candlestick Market")
+    # 🚀 GRAFIK TRADINGVIEW INSTAN (Real-time tanpa loading lama)
+    st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
     tv_html_code = f"""
-    <div class="tradingview-widget-container" style="height:500px;width:100%">
+    <div class="tradingview-widget-container" style="height:480px;width:100%">
       <div id="tradingview_chart" style="height:100%;width:100%"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget(
       {{
         "width": "100%",
-        "height": 500,
+        "height": 480,
         "symbol": "BINANCE:{symbol}USDT",
         "interval": "D",
         "timezone": "Asia/Jakarta",
@@ -188,13 +182,13 @@ with tab_main:
       </script>
     </div>
     """
-    components.html(tv_html_code, height=510)
+    components.html(tv_html_code, height=490)
 
     st.markdown("---")
 
-    # 🎯 ANALISIS POSISI PORTOFOLIO SAYA (Default 0)
+    # 🎯 ANALISIS POSISI PORTOFOLIO SAYA
     st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
-    st.info("Masukkan harga beli awal kamu di bawah ini (mulai dari 0). AI akan menghitung posisi profit/rugi, Stop Loss, dan Target Jual (TP) secara akurat.")
+    st.info("Masukkan harga beli awal kamu di bawah ini (mulai dari 0). AI akan menghitung posisi profit/rugi, Stop Loss, dan Target Jual (TP) secara kilat.")
 
     col_input1, col_input2 = st.columns(2)
     with col_input1:
@@ -206,7 +200,7 @@ with tab_main:
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
             headers = {'User-Agent': 'Mozilla/5.0'}
-            res = requests.get(url, headers=headers).json()['ticker']
+            res = requests.get(url, headers=headers, timeout=5).json()['ticker']
             
             current_market_price = int(res['last'])
             high = int(res['high'])
@@ -236,7 +230,7 @@ with tab_main:
             if not api_key:
                 st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
             else:
-                with st.spinner(f"AI sedang menganalisis posisi koin {symbol} kamu..."):
+                with st.spinner(f"AI sedang merespon analisis cepat koin {symbol}..."):
                     client = genai.Client(api_key=api_key)
                     
                     prompt = f"""
@@ -251,21 +245,20 @@ with tab_main:
                     - Harga Tertinggi 24j: Rp {high:,}
                     - Harga Terendah 24j: Rp {low:,}
 
-                    Berdasarkan data di atas, berikan analisis dan panduan taktis dalam format poin rapi:
-                    1. 🌐 Analisis Posisi Saat Ini (Apakah posisi sedang aman, profit, atau waspada?)
-                    2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT SEBAGIAN / CUT LOSS / TAMBAH MUATAN / BUY ON DIP)
-                    3. 🛑 Saran Harga Stop Loss (SL) yang aman untuk mengamankan modal/profit.
-                    4. 🎯 Target Jual / Take Profit (TP1 & TP2) berikutnya dalam Rupiah.
-                    5. 📥 Saran Harga Beli Ulang / Tambah Muatan (Jika ingin akumulasi lagi di harga berapa).
-                    6. 💡 Alasan dan Tips Manajemen Risiko dari AI Rey472.
+                    Berikan analisis ringkas, padat, dan taktis dalam format poin rapi:
+                    1. 🌐 Analisis Posisi Saat Ini
+                    2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT / CUT LOSS / BUY ON DIP)
+                    3. 🛑 Saran Harga Stop Loss (SL) yang aman.
+                    4. 🎯 Target Jual / Take Profit (TP1 & TP2) dalam Rupiah.
+                    5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
                     response = client.models.generate_content(
-                        model='gemini-3.5-flash',
+                        model='gemini-2.5-flash',  # Menggunakan model flash yang lebih cepat merespon
                         contents=prompt
                     )
                     
-                    st.markdown("### 🤖 Hasil Analisis & Rekomendasi AI Rey472")
+                    st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
                     st.info(response.text)
                     
         except Exception as e:
@@ -286,8 +279,8 @@ with tab_compare:
             t1 = pairs_data[coin1_label]['ticker_id']
             t2 = pairs_data[coin2_label]['ticker_id']
             
-            res1 = requests.get(f"https://indodax.com/api/ticker/{t1}").json()['ticker']
-            res2 = requests.get(f"https://indodax.com/api/ticker/{t2}").json()['ticker']
+            res1 = requests.get(f"https://indodax.com/api/ticker/{t1}", timeout=5).json()['ticker']
+            res2 = requests.get(f"https://indodax.com/api/ticker/{t2}", timeout=5).json()['ticker']
             
             c1_col, c2_col = st.columns(2)
             with c1_col:
