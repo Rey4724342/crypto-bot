@@ -187,7 +187,7 @@ st.markdown("---")
 
 tab_main, tab_edu, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
     "📈 Dashboard Utama & AI",
-    "🎓 Akademi & Misi Belajar",
+    "🎓 Akademi & Ujian Kasus",
     "📰 Sentimen & Berita Market",
     "🔀 Perbandingan Koin", 
     "📓 Jurnal Trading", 
@@ -360,15 +360,15 @@ with tab_main:
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
 
-# ================= TAB 2: AKADEMI & MISI BELAJAR (FITUR ARAHAN LENGKAP) =================
+# ================= TAB 2: AKADEMI & UJIAN KASUS (DENGAN SOAL INTERAKTIF) =================
 with tab_edu:
-    st.markdown("### 🎓 Akademi & Misi Belajar Crypto Terarah")
-    st.caption("Ikuti misi bertahap di bawah ini. Selesaikan tiap langkah dan centang tugasnya untuk menjadi Trader Pro!")
+    st.markdown("### 🎓 Akademi & Ujian Simulasi Kasus Nyata")
+    st.caption("Belajar teori saja tidak cukup! Uji pemahamanmu lewat studi kasus nyata agar tidak bingung saat terjun langsung.")
 
     # Menu Navigasi Misi
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
-        if st.button("🚀 Misi 1: Dasar", use_container_width=True):
+        if st.button("🚀 Misi 1: Dasar & Psikologi", use_container_width=True):
             st.session_state.academy_step = 1
     with col_m2:
         if st.button("🕯️ Misi 2: Candlestick", use_container_width=True):
@@ -377,132 +377,154 @@ with tab_edu:
         if st.button("🧱 Misi 3: Support/Resist", use_container_width=True):
             st.session_state.academy_step = 3
     with col_m4:
-        if st.button("📊 Misi 4: Lab TradingView", use_container_width=True):
+        if st.button("📊 Misi 4: Lab Charting", use_container_width=True):
             st.session_state.academy_step = 4
 
     st.markdown("---")
 
     # --- MISI 1 ---
     if st.session_state.academy_step == 1:
-        st.markdown("### 🚀 Misi 1: Mengenal Konsep Dasar & Psikologi Pasar")
-        st.info("🎯 **Target Misi:** Paham cara kerja pasar crypto dan aturan emas penggunaan uang.")
+        st.markdown("### 🚀 Misi 1: Pengelolaan Modal & Mental Trader")
+        st.info("🎯 **Target Misi:** Menguji kedisiplinan mengelola risiko modal.")
         
         st.write("""
-        Selamat datang di Misi pertama! Sebelum terjun membeli koin, kamu wajib tahu fondasi utamanya:
-        1. **Apa itu Crypto?** Mata uang digital terdesentralisasi berbasis teknologi *Blockchain*.
-        2. **Prinsip Spot Trading:** Beli di harga bawah (Support), jual di harga atas (Resistance). Pasar buka 24 jam non-stop!
-        3. **Aturan Uang Dingin:** Jangan pernah pakai uang kebutuhan pokok / hutang untuk trading.
+        **Materi Singkat:** Jangan pernah memasukkan uang pinjaman atau uang SPP/belanja dapur ke market crypto karena pasar bisa naik-turun sewaktu-waktu.
         """)
-
-        st.markdown("#### ✅ Checklist Arahan Misi 1:")
-        check1 = st.checkbox("Saya paham apa itu Blockchain & Spot Trading")
-        check2 = st.checkbox("Saya berjanji hanya menggunakan 'uang dingin' untuk trading")
-
-        if check1 and check2:
-            st.success("🎉 Luar biasa! Misi 1 Selesai. Silakan lanjut ke Misi 2 untuk belajar membaca grafik.")
-            if st.button("➡️ Lanjut ke Misi 2: Anatomi Candlestick"):
-                st.session_state.academy_step = 2
-                st.rerun()
+        
+        st.markdown("#### 📝 Ujian Kasus Nyata Misi 1:")
+        st.warning("⚠️ **Studi Kasus:** Kamu memiliki uang tabungan darurat sebesar Rp 2.000.000 yang akan dipakai minggu depan untuk bayar kontrakan. Tiba-tiba temanmu mengajak beli koin baru yang sedang viral. Apa tindakan yang benar?")
+        
+        ans_m1 = st.radio(
+            "Pilih keputusan terbaikmu:",
+            [
+                "A. Masukkan setengah uang kontrakan ke koin tersebut biar cepat untung.",
+                "B. Tolak ajakan tersebut karena itu bukan 'uang dingin' (melanggar manajemen risiko).",
+                "C. Pinjam uang online dulu buat modal trading."
+            ],
+            index=None,
+            key="quiz_m1"
+        )
+        
+        if ans_m1:
+            if ans_m1.startswith("B"):
+                st.success("🎉 **BENAR SEKALI!** Uang kebutuhan jangka pendek tidak boleh dipakai trading. Kamu lulus ujian mental Misi 1!")
+                if st.button("➡️ Lanjut ke Misi 2"):
+                    st.session_state.academy_step = 2
+                    st.rerun()
+            else:
+                st.error("❌ **SALUR/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
 
     # --- MISI 2 ---
     elif st.session_state.academy_step == 2:
-        st.markdown("### 🕯️ Misi 2: Membaca Anatomi Candlestick & Animasi")
-        st.info("🎯 **Target Misi:** Bisa membaca perbedaan Candle Hijau (Bullish) dan Merah (Bearish).")
+        st.markdown("### 🕯️ Misi 2: Membaca Psikologi Candlestick")
+        st.info("🎯 **Target Misi:** Menafsirkan arah tren lewat bentuk candle.")
 
-        st.write("Perhatikan animasi grafik di bawah ini untuk melihat bagaimana candle bergerak naik turun secara *real-time* di market:")
+        st.write("Perhatikan animasi pergerakan candle di bawah ini:")
 
         candlestick_anim = """
         <div style="display: flex; justify-content: space-around; background-color: #11141c; padding: 20px; border-radius: 12px; font-family: sans-serif; color: white;">
             <div style="text-align: center; width: 45%;">
                 <h4 style="color: #00E676; margin-bottom: 5px;">🟢 Hijau (Bullish)</h4>
-                <p style="font-size: 12px; color: #aaa;">Harga NAIK (Penutupan > Pembukaan)</p>
-                <svg width="100" height="180">
-                    <line x1="50" y1="10" x2="50" y2="170" stroke="#00E676" stroke-width="3" />
-                    <rect x="30" y="40" width="40" height="90" fill="#00E676" rx="4">
-                        <animate attributeName="height" values="20;90;20" dur="3s" repeatCount="indefinite" />
-                        <animate attributeName="y" values="110;40;110" dur="3s" repeatCount="indefinite" />
+                <p style="font-size: 12px; color: #aaa;">Harga NAIK (Buyer Dominan)</p>
+                <svg width="100" height="150">
+                    <line x1="50" y1="10" x2="50" y2="140" stroke="#00E676" stroke-width="3" />
+                    <rect x="30" y="30" width="40" height="80" fill="#00E676" rx="4">
+                        <animate attributeName="height" values="20;80;20" dur="3s" repeatCount="indefinite" />
                     </rect>
                 </svg>
-                <div style="font-size: 11px; text-align: left; background: #1a202c; padding: 8px; border-radius: 6px;">
-                    • <b>Sumbu Atas:</b> Harga Tertinggi<br>
-                    • <b>Body Hijau:</b> Sesi Ditutup Naik
-                </div>
             </div>
-
             <div style="text-align: center; width: 45%;">
                 <h4 style="color: #FF5252; margin-bottom: 5px;">🔴 Merah (Bearish)</h4>
-                <p style="font-size: 12px; color: #aaa;">Harga TURUN (Penutupan < Pembukaan)</p>
-                <svg width="100" height="180">
-                    <line x1="50" y1="10" x2="50" y2="170" stroke="#FF5252" stroke-width="3" />
-                    <rect x="30" y="40" width="40" height="90" fill="#FF5252" rx="4">
-                        <animate attributeName="height" values="20;90;20" dur="3s" repeatCount="indefinite" />
+                <p style="font-size: 12px; color: #aaa;">Harga TURUN (Seller Dominan)</p>
+                <svg width="100" height="150">
+                    <line x1="50" y1="10" x2="50" y2="140" stroke="#FF5252" stroke-width="3" />
+                    <rect x="30" y="30" width="40" height="80" fill="#FF5252" rx="4">
+                        <animate attributeName="height" values="20;80;20" dur="3s" repeatCount="indefinite" />
                     </rect>
                 </svg>
-                <div style="font-size: 11px; text-align: left; background: #1a202c; padding: 8px; border-radius: 6px;">
-                    • <b>Sumbu Atas:</b> Harga Tertinggi<br>
-                    • <b>Body Merah:</b> Sesi Ditutup Turun
-                </div>
             </div>
         </div>
         """
-        components.html(candlestick_anim, height=310)
+        components.html(candlestick_anim, height=270)
 
-        st.markdown("#### ✅ Checklist Arahan Misi 2:")
-        c_m2_1 = st.checkbox("Saya tahu arti sumbu atas & bawah (High & Low)")
-        c_m2_2 = st.checkbox("Saya mengerti candle hijau menandakan buyer menang")
+        st.markdown("#### 📝 Ujian Kasus Nyata Misi 2:")
+        st.warning("⚠️ **Studi Kasus:** Kamu melihat grafik harga sebuah koin membentuk 3 candle merah besar berturut-turut turun menembus batas bawah. Apa arti kondisi pasar ini?")
+        
+        ans_m2 = st.radio(
+            "Pilih analisis yang paling logis:",
+            [
+                "A. Tekanan jual (seller) sedang sangat kuat, pasar sedang bearish/turun.",
+                "B. Sebentar lagi harga pasti naik drastis, jadi harus langsung all-in.",
+                "C. Market sedang libur."
+            ],
+            index=None,
+            key="quiz_m2"
+        )
 
-        if c_m2_1 and c_m2_2:
-            st.success("🎉 Mantap! Misi 2 Selesai.")
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                if st.button("⬅️ Kembali ke Misi 1"):
-                    st.session_state.academy_step = 1
-                    st.rerun()
-            with col_b2:
-                if st.button("➡️ Lanjut ke Misi 3: Support & Resistance"):
-                    st.session_state.academy_step = 3
-                    st.rerun()
+        if ans_m2:
+            if ans_m2.startswith("A"):
+                st.success("🎉 **TEPAT SEKALI!** Tiga candle merah panjang menandakan dominasi seller yang kuat. Kamu paham cara membaca momentum!")
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    if st.button("⬅️ Kembali ke Misi 1"):
+                        st.session_state.academy_step = 1
+                        st.rerun()
+                with col_b2:
+                    if st.button("➡️ Lanjut ke Misi 3"):
+                        st.session_state.academy_step = 3
+                        st.rerun()
+            else:
+                st.error("❌ **Kurang tepat.** Jangan melawan arus tren turun yang kuat tanpa konfirmasi sinyal pantulan.")
 
     # --- MISI 3 ---
     elif st.session_state.academy_step == 3:
         st.markdown("### 🧱 Misi 3: Menentukan Area Support & Resistance")
-        st.info("🎯 **Target Misi:** Mengetahui di mana batas bawah (lantai) dan batas atas (atap) harga.")
+        st.info("🎯 **Target Misi:** Menempatkan titik eksekusi beli dan jual yang rasional.")
 
         col_sup, col_res = st.columns(2)
         with col_sup:
-            st.success("🧱 **Support (Lantai / Tempat Pantul Bawah)**")
-            st.write("Area di mana banyak pembeli menunggu untuk memborong koin agar harga tidak jatuh lagi. Cocok untuk titik **Buy**.")
+            st.success("🧱 **Support (Lantai Bawah)**")
+            st.write("Tempat berkumpulnya pembeli (Buyer). Cocok untuk pasang posisi **Buy**.")
         with col_res:
-            st.error("🧱 **Resistance (Atap / Batas Naik Atas)**")
-            st.write("Area di mana banyak orang ingin menjual koin miliknya untuk mengambil untung. Cocok untuk titik **Take Profit**.")
+            st.error("🧱 **Resistance (Atap Atas)**")
+            st.write("Tempat berkumpulnya penjual (Seller). Cocok untuk pasang posisi **Take Profit**.")
 
         st.markdown("---")
-        st.markdown("#### 🧠 Mini Kuis Evaluasi Misi 3:")
-        quiz_ans = st.radio("Di area manakah sebaiknya kita bersiap melakukan pembelian (Buy)?", ["Area Resistance (Atap)", "Area Support (Lantai)", "Di tengah-tengah jalan"])
+        st.markdown("#### 📝 Ujian Kasus Nyata Misi 3:")
+        st.warning("⚠️ **Studi Kasus:** Harga koin A sedang mendekati garis 'Atap' (Resistance) kuat dan mulai melambat kenaikannya. Tindakan apa yang paling bijak dilakukan trader?")
         
-        if quiz_ans == "Area Support (Lantai)":
-            st.success("✅ **Benar Sekali!** Membeli di dekat area support memberikan risiko yang lebih kecil.")
-            if st.button("➡️ Lanjut ke Misi 4: Lab Praktik Charting"):
-                st.session_state.academy_step = 4
-                st.rerun()
-        elif quiz_ans:
-            st.warning("❌ Kurang tepat. Coba ingat lagi analogi lantai rumah (Support) tempat bola memantul naik.")
+        ans_m3 = st.radio(
+            "Pilih strategi yang tepat:",
+            [
+                "A. Memborong lebih banyak koin di harga pucuk resistance.",
+                "B. Bersiap merealisasikan keuntungan (Take Profit) sebagian atau seluruhnya.",
+                "C. Mematikan aplikasi dan tidur."
+            ],
+            index=None,
+            key="quiz_m3"
+        )
+
+        if ans_m3:
+            if ans_m3.startswith("B"):
+                st.success("🎉 **HEBAT!** Area resistance adalah area rawan koreksi, sehingga mengambil profit di sana adalah keputusan profesional.")
+                if st.button("➡️ Lanjut ke Misi 4: Lab Praktik Charting"):
+                    st.session_state.academy_step = 4
+                    st.rerun()
+            else:
+                st.error("❌ **Kurang tepat.** Membeli di area resistance memiliki risiko tinggi terkena penolakan harga (rejection).")
 
     # --- MISI 4 ---
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
-        st.info("🎯 **Target Misi:** Mempraktikkan teori langsung di chart interaktif profesional.")
+        st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
 
         st.write("""
-        Arahan Tugas Akhir Kamu:
-        1. Lihat chart di bawah ini.
-        2. Gunakan alat garis (*Trendline*) di menu kiri chart TradingView.
-        3. Coba temukan garis mendatar di mana harga sering memantul turun/naik.
+        Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu (garis horizontal support/resistance) secara mandiri:
         """)
 
         practice_chart_code = """
-        <div class="tradingview-widget-container" style="height:500px;width:100%">
-          <div id="tradingview_practice" style="height:500px;width:100%"></div>
+        <div class="tradingview-widget-container" style="height:480px;width:100%">
+          <div id="tradingview_practice" style="height:480px;width:100%"></div>
           <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
           <script type="text/javascript">
           new TradingView.widget({
@@ -516,15 +538,14 @@ with tab_edu:
             "toolbar_bg": "#f1f3f6",
             "enable_publishing": false,
             "allow_symbol_change": true,
-            "save_image": false,
             "container_id": "tradingview_practice"
           });
           </script>
         </div>
         """
-        components.html(practice_chart_code, height=510)
+        components.html(practice_chart_code, height=490)
 
-        st.success("🏆 **Selamat!** Jika kamu sudah menyelesaikan seluruh misi ini, kamu resmi siap menggunakan Dashboard AI Rey472 untuk menganalisis market secara mandiri!")
+        st.success("🏆 **Selamat!** Kamu telah menyelesaikan seluruh rangkaian materi & ujian studi kasus interaktif di Akademi Rey472!")
 
 # ================= TAB 3: SENTIMEN & BERITA MARKET =================
 with tab_sentimen:
