@@ -43,19 +43,19 @@ responsive_css = """
             """
 st.markdown(responsive_css, unsafe_allow_html=True)
 
-# Inisialisasi Session State secara efisien
-st.session_state.setdefault('journal', [])
-st.session_state.setdefault('chat_history', [])
-st.session_state.setdefault('academy_step', 1)
-
-HEADERS = {'User-Agent': 'Mozilla/5.0'}
+if 'journal' not in st.session_state:
+    st.session_state.journal = []
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+if 'academy_step' not in st.session_state:
+    st.session_state.academy_step = 1
 
 @st.cache_data(ttl=300)
 def get_indodax_summary():
     try:
         url = "https://indodax.com/api/summaries"
-        res = requests.get(url, headers=HEADERS, timeout=5)
-        return res.json() if res.status_code == 200 else {}
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        return requests.get(url, headers=headers, timeout=5).json()
     except Exception:
         return {}
 
@@ -63,21 +63,23 @@ def get_indodax_summary():
 def get_all_indodax_pairs():
     try:
         url = "https://indodax.com/api/pairs"
-        res = requests.get(url, headers=HEADERS, timeout=5).json()
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(url, headers=headers, timeout=5).json()
         
         pairs_dict = {}
         for item in res:
             ticker_id = item.get('ticker_id', '')
             if ticker_id.endswith('_idr'):
-                symbol = ticker_id[:-4].upper()
+                symbol = ticker_id.replace('_idr', '').upper()
                 desc = item.get('description', symbol)
                 clean_name = f"{symbol} - {desc}" if desc.upper() != symbol else symbol
+                logo_url = item.get('url_logo_png', '')
                 
                 pairs_dict[clean_name] = {
                     'ticker_id': ticker_id,
                     'symbol': symbol,
                     'clean_name': clean_name,
-                    'logo_url': item.get('url_logo_png', '')
+                    'logo_url': logo_url
                 }
         return dict(sorted(pairs_dict.items()))
     except Exception:
@@ -104,7 +106,8 @@ def get_fear_and_greed():
 def get_crypto_news_robust():
     try:
         url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
-        res = requests.get(url, headers=HEADERS, timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        res = requests.get(url, headers=headers, timeout=10)
         root = ET.fromstring(res.content)
         
         news_items = []
@@ -114,9 +117,9 @@ def get_crypto_news_robust():
         }
 
         for item in root.findall('./channel/item')[:6]:
-            title = item.findtext('title', 'Berita Crypto')
-            link = item.findtext('link', '#')
-            pub_date = item.findtext('pubDate', '')
+            title = item.find('title').text if item.find('title') is not None else 'Berita Crypto'
+            link = item.find('link').text if item.find('link') is not None else '#'
+            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ''
             
             image_url = ""
             media_content = item.find('media:content', namespaces)
@@ -203,7 +206,7 @@ with tab_main:
         
         for k, v in tickers.items():
             if k.endswith('_idr'):
-                sym = k[:-4].upper()
+                sym = k.replace('_idr', '').upper()
                 try:
                     last_price = float(v.get('last', 0))
                     high_price = float(v.get('high', 0))
@@ -216,8 +219,8 @@ with tab_main:
 
         if mover_list:
             df_movers = pd.DataFrame(mover_list)
-            top_gainers = df_movers.nlargest(3, 'Perubahan (%)')
-            top_losers = df_movers.nsmallest(3, 'Perubahan (%)')
+            top_gainers = df_movers.sort_values(by='Perubahan (%)', ascending=False).head(3)
+            top_losers = df_movers.sort_values(by='Perubahan (%)', ascending=True).head(3)
 
             g_col, l_col = st.columns(2)
             with g_col:
@@ -287,7 +290,8 @@ with tab_main:
     if btn_submit:
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
-            res = requests.get(url, headers=HEADERS, timeout=5).json()['ticker']
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            res = requests.get(url, headers=headers, timeout=5).json()['ticker']
             
             current_market_price = int(res['last'])
             high = int(res['high'])
@@ -622,8 +626,8 @@ with tab_compare:
             t1 = pairs_data[coin1_label]['ticker_id']
             t2 = pairs_data[coin2_label]['ticker_id']
             
-            res1 = requests.get(f"https://indodax.com/api/ticker/{t1}", headers=HEADERS, timeout=5).json()['ticker']
-            res2 = requests.get(f"https://indodax.com/api/ticker/{t2}", headers=HEADERS, timeout=5).json()['ticker']
+            res1 = requests.get(f"https://indodax.com/api/ticker/{t1}", timeout=5).json()['ticker']
+            res2 = requests.get(f"https://indodax.com/api/ticker/{t2}", timeout=5).json()['ticker']
             
             c1_col, c2_col = st.columns(2)
             with c1_col:
