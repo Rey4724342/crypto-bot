@@ -241,31 +241,17 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 📊 GRAFIK TRADINGVIEW
+    # 📊 GRAFIK TRADINGVIEW (DIAMBIL SECARA LANGSUNG & CEPAT VIA IFRAME)
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
     tv_widget_code = f"""
-    <div class="tradingview-widget-container" style="height:480px;width:100%">
-      <div id="tradingview_chart" style="height:480px;width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({{
-        "autosize": true,
-        "symbol": "BINANCE:{symbol}USDT",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_chart"
-      }});
-      </script>
-    </div>
+    <iframe 
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=BINANCE:{symbol}USDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&studies_overrides={{}}&overrides={{}}&enabled_features=[]&disabled_features=[]&locale=id"
+        style="width: 100%; height: 480px; border: none; border-radius: 8px;"
+        allowfullscreen>
+    </iframe>
     """
-    components.html(tv_widget_code, height=490)
+    components.html(tv_widget_code, height=490, key=f"tv_chart_{symbol}")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -523,27 +509,13 @@ with tab_edu:
         """)
 
         practice_chart_code = """
-        <div class="tradingview-widget-container" style="height:480px;width:100%">
-          <div id="tradingview_practice" style="height:480px;width:100%"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-          <script type="text/javascript">
-          new TradingView.widget({
-            "autosize": true,
-            "symbol": "BINANCE:BTCUSDT",
-            "interval": "D",
-            "timezone": "Asia/Jakarta",
-            "theme": "dark",
-            "style": "1",
-            "locale": "id",
-            "toolbar_bg": "#f1f3f6",
-            "enable_publishing": false,
-            "allow_symbol_change": true,
-            "container_id": "tradingview_practice"
-          });
-          </script>
-        </div>
+        <iframe 
+            src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_practice&symbol=BINANCE:BTCUSDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&studies_overrides={{}}&overrides={{}}&enabled_features=[]&disabled_features=[]&locale=id"
+            style="width: 100%; height: 480px; border: none; border-radius: 8px;"
+            allowfullscreen>
+        </iframe>
         """
-        components.html(practice_chart_code, height=490)
+        components.html(practice_chart_code, height=490, key="tv_practice")
 
         st.success("🏆 **Selamat!** Kamu telah menyelesaikan seluruh rangkaian materi & ujian studi kasus interaktif di Akademi Rey472!")
 
