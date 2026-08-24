@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
 import pandas as pd
 from google import genai
@@ -163,13 +162,24 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR ({selected_info['clean_name']})")
 
-    # ⚡ GRAFIK TRADINGVIEW ULTRA FAST (Optimized Iframe Embed)
-    st.markdown("#### 📊 Grafik Candlestick Market")
+    # 🚀 GANTI GRAFIK BERAT DENGAN TOMBOL AKSES CHART INSTAN (ANTI-LOADING)
+    st.markdown("#### 📊 Grafik Market & Charting")
     
-    # URL Widget Standar TradingView yang diringankan parameternya agar langsung muncul tanpa loading lama
-    tv_embed_url = f"https://s.tradingview.com/widgetembed/?symbol=BINANCE:{symbol}USDT&interval=60&theme=dark&style=1&timezone=Asia/Jakarta&withdateranges=1&hideideas=1"
-    
-    components.iframe(tv_embed_url, height=450, scrolling=False)
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        st.link_button(
+            f"📈 Buka Full Chart {symbol} di TradingView", 
+            f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT",
+            use_container_width=True
+        )
+    with chart_col2:
+        st.link_button(
+            f"🌐 Cek Market {symbol} di Indodax", 
+            f"https://indodax.com/market/{symbol.upper()}IDR",
+            use_container_width=True
+        )
+
+    st.markdown("")
 
     # Target Alert
     st.markdown("#### 🚨 Set Target Alert Harga Kamu")
