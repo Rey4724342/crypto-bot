@@ -99,20 +99,33 @@ def get_fear_and_greed():
     except Exception:
         return "50", "Neutral"
 
-@st.cache_data(ttl=1800)
-def get_crypto_news():
+@st.cache_data(ttl=900)
+def get_crypto_news_with_images():
     try:
-        url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
+        # API Real-time Berita Crypto + Gambar
+        url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=5)
-        root = ET.fromstring(response.content)
+        res = requests.get(url, headers=headers, timeout=5).json()
         
         news_items = []
-        for item in root.findall('./channel/item')[:5]:
-            title = item.find('title').text if item.find('title') is not None else 'No Title'
-            link = item.find('link').text if item.find('link') is not None else '#'
-            pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ''
-            news_items.append({'title': title, 'link': link, 'date': pub_date[:16]})
+        if 'Data' in res:
+            for item in res['Data'][:6]:
+                title = item.get('title', 'No Title')
+                link = item.get('url', '#')
+                image_url = item.get('imageurl', '')
+                source = item.get('source_info', {}).get('name', 'Crypto News')
+                body = item.get('body', '')
+                
+                # Potong ringkasan teks berita max 150 karakter
+                short_body = body[:140] + "..." if len(body) > 140 else body
+
+                news_items.append({
+                    'title': title,
+                    'link': link,
+                    'image': image_url,
+                    'source': source,
+                    'body': short_body
+                })
         return news_items
     except Exception:
         return []
@@ -324,12 +337,12 @@ with tab_main:
 
 # ================= TAB 2: SENTIMEN & BERITA MARKET =================
 with tab_sentimen:
-    st.markdown("### 🧠 Sentimen Pasar Crypto Global & Berita Terkini")
+    st.markdown("### 🧠 Sentimen Pasar Crypto Global & Berita Bergambar Real-Time")
     
     col_fg, col_news = st.columns([1, 2])
     
     with col_fg:
-        st.markdown("#### 😱 Crypto Fear & Greed Index")
+        st.markdown("#### 😱 Fear & Greed Index")
         fng_val, fng_class = get_fear_and_greed()
         
         try:
@@ -369,16 +382,22 @@ with tab_sentimen:
         st.write("• **55-100 (Greed)**: Pasar sedang sangat optimis/FOMO. Hati-hati potensi koreksi mendadak.")
 
     with col_news:
-        st.markdown("#### 📰 Berita Crypto Global Terbaru (CoinDesk)")
-        news_list = get_crypto_news()
+        st.markdown("#### 📰 Berita Crypto Terkini Real-Time")
+        news_list = get_crypto_news_with_images()
         
         if news_list:
             for news in news_list:
-                st.markdown(f"**[{news['title']}]({news['link']})**")
-                st.caption(f"🗓️ Dipublikasikan: {news['date']}")
+                img_col, text_col = st.columns([1, 3])
+                with img_col:
+                    if news['image']:
+                        st.image(news['image'], use_container_width=True)
+                with text_col:
+                    st.markdown(f"**[{news['title']}]({news['link']})**")
+                    st.caption(f"📌 Sumber: **{news['source']}**")
+                    st.write(f"{news['body']}")
                 st.markdown("---")
         else:
-            st.info("Gagal mengambil berita terkini. Silakan coba muat ulang halaman.")
+            st.info("Gagal mengambil berita bergambar. Silakan coba muat ulang halaman.")
 
 # ================= TAB 3: PERBANDINGAN KOIN =================
 with tab_compare:
