@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus
+# 🔒 CSS Khusus Optimization & Hiding Header/Footer
 hide_streamlit_style = """
             <style>
             #MainMenu {display: none !important;}
@@ -157,7 +157,7 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # ⚡ TradingView Optimized Widget Fast-Load
+    # ⚡ TradingView Optimized Widget
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     tv_html_code = f"""
     <div class="tradingview-widget-container" style="height:500px;width:100%">
@@ -256,9 +256,9 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
-                    # ⚠️ Menggunakan gemini-2.5-flash untuk kompatibilitas versi terbaru
+                    # ✅ Menggunakan gemini-3.6-flash sesuai rekomendasi API terbaru
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-3.6-flash',
                         contents=prompt
                     )
                     
@@ -402,8 +402,9 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
+                        # ✅ Menggunakan gemini-3.6-flash
                         response = client.models.generate_content(
-                            model='gemini-2.5-flash',
+                            model='gemini-3.6-flash',
                             contents=chat_prompt
                         )
                         reply = response.text
