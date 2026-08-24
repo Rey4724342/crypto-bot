@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🔒 CSS Khusus: Hilangkan Menu Atas, Header, Toolbar
+# 🔒 CSS Khusus
 hide_streamlit_style = """
             <style>
             #MainMenu {display: none !important;}
@@ -157,14 +157,31 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # Fast-Load TradingView Widget
+    # ⚡ TradingView Optimized Widget Fast-Load
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     tv_html_code = f"""
-    <div class="tradingview-widget-container" style="height:480px;width:100%">
-      <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=BINANCE:{symbol}USDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=F1F3F6&studies=[]&theme=dark&style=1&timezone=Asia/Jakarta" width="100%" height="480" frameborder="0" allowtransparency="true" scrolling="no"></iframe>
+    <div class="tradingview-widget-container" style="height:500px;width:100%">
+      <div id="tradingview_chart" style="height:500px;width:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({{
+        "autosize": true,
+        "symbol": "BINANCE:{symbol}USDT",
+        "interval": "D",
+        "timezone": "Asia/Jakarta",
+        "theme": "dark",
+        "style": "1",
+        "locale": "id",
+        "toolbar_bg": "#f1f3f6",
+        "enable_publishing": false,
+        "hide_legend": false,
+        "save_image": false,
+        "container_id": "tradingview_chart"
+      }});
+      </script>
     </div>
     """
-    components.html(tv_html_code, height=490)
+    components.html(tv_html_code, height=510)
 
     st.markdown("---")
 
@@ -239,9 +256,9 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
-                    # Menggunakan model gemini-2.0-flash yang direkomendasikan
+                    # ⚠️ Menggunakan gemini-2.5-flash untuk kompatibilitas versi terbaru
                     response = client.models.generate_content(
-                        model='gemini-2.0-flash',
+                        model='gemini-2.5-flash',
                         contents=prompt
                     )
                     
@@ -385,9 +402,8 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
-                        # Menggunakan model gemini-2.0-flash yang direkomendasikan
                         response = client.models.generate_content(
-                            model='gemini-2.0-flash',
+                            model='gemini-2.5-flash',
                             contents=chat_prompt
                         )
                         reply = response.text
