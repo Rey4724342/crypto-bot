@@ -193,7 +193,7 @@ def call_gemini_with_fallback(client, prompt):
     models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
     
     for model_name in models_to_try:
-        for attempt in range(3):
+        for attempt in range(4):  # Coba hingga 4 kali per model
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -202,7 +202,7 @@ def call_gemini_with_fallback(client, prompt):
                 if response and hasattr(response, 'text') and response.text:
                     return response.text
             except Exception:
-                time.sleep((attempt + 1) * 2)
+                time.sleep((attempt + 1) * 3)  # Jeda bertahap (3s, 6s, 9s, 12s)
     return None
 
 pairs_data = get_all_indodax_pairs()
