@@ -190,9 +190,10 @@ def calculate_auto_indicators(last, high, low, buy_volume, sell_volume):
     return signals
 
 def call_gemini_with_fallback(client, prompt):
-    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+    
     for model_name in models_to_try:
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 response = client.models.generate_content(
                     model=model_name,
@@ -201,7 +202,7 @@ def call_gemini_with_fallback(client, prompt):
                 if response and hasattr(response, 'text') and response.text:
                     return response.text
             except Exception:
-                time.sleep(1)
+                time.sleep((attempt + 1) * 2)
     return None
 
 pairs_data = get_all_indodax_pairs()
