@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import xml.etree.ElementTree as ET
 import re
+import time
 from google import genai
 
 st.set_page_config(
@@ -166,7 +167,6 @@ def get_crypto_news_robust():
 
 def calculate_auto_indicators(last, high, low, buy_volume, sell_volume):
     signals = []
-    # Posisi Harga terhadap Range 24j
     price_range = high - low if high > low else 1
     pos_pct = ((last - low) / price_range) * 100
     
@@ -177,7 +177,6 @@ def calculate_auto_indicators(last, high, low, buy_volume, sell_volume):
     else:
         signals.append(("🔵 Konsolidasi Neutral", "Harga berada di rentang tengah pergerakan harian.", "blue"))
 
-    # Tekanan Orderbook
     total_vol = buy_volume + sell_volume
     if total_vol > 0:
         buy_ratio = (buy_volume / total_vol) * 100
@@ -190,9 +189,23 @@ def calculate_auto_indicators(last, high, low, buy_volume, sell_volume):
 
     return signals
 
+def call_gemini_with_fallback(client, prompt):
+    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    for model_name in models_to_try:
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                if response and hasattr(response, 'text') and response.text:
+                    return response.text
+            except Exception:
+                time.sleep(1)
+    return None
+
 pairs_data = get_all_indodax_pairs()
 
-# Header Utama
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
 st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
 st.markdown("---")
@@ -276,7 +289,6 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 📊 GRAFIK TRADINGVIEW OPTIMIZED (Fast Render)
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
     tv_widget_code = f"""
@@ -312,7 +324,6 @@ with tab_main:
 
     st.markdown("---")
 
-    # ⚡ FITUR BARU: SINYAL INDIKATOR & LIVE ORDERBOOK
     col_sig, col_ob = st.columns([1, 1])
 
     depth_data = get_indodax_depth(ticker_id)
@@ -370,7 +381,6 @@ with tab_main:
 
     with st.form("portfolio_form"):
         my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
-        
         btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True)
 
     if btn_submit:
@@ -388,10 +398,7 @@ with tab_main:
             elif current_market_price >= high * 0.98:
                 st.warning("🔥 **Perhatian Area High**: Harga berada di dekat puncak 24j. Hati-hati terhadap aksi profit taking.")
 
-            if my_buy_price > 0:
-                pnl_pct = ((current_market_price - my_buy_price) / my_buy_price) * 100
-            else:
-                pnl_pct = 0
+            pnl_pct = ((current_market_price - my_buy_price) / my_buy_price) * 100 if my_buy_price > 0 else 0
 
             c1, c2, c3 = st.columns(3)
             c1.metric(label="Harga Pasar Saat Ini", value=f"Rp {current_market_price:,}")
@@ -433,13 +440,13 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
-                    response = client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=prompt
-                    )
+                    ai_result = call_gemini_with_fallback(client, prompt)
                     
-                    st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
-                    st.info(response.text)
+                    if ai_result:
+                        st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
+                        st.info(ai_result)
+                    else:
+                        st.error("⚠️ Server AI Google sedang sangat sibuk (503). Silakan klik tombol sekali lagi dalam beberapa detik.")
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
@@ -468,11 +475,7 @@ with tab_edu:
     if st.session_state.academy_step == 1:
         st.markdown("### 🚀 Misi 1: Pengelolaan Modal & Mental Trader")
         st.info("🎯 **Target Misi:** Menguji kedisiplinan mengelola risiko modal.")
-        
-        st.write("""
-        **Materi Singkat:** Jangan pernah memasukkan uang pinjaman atau uang SPP/belanja dapur ke market crypto karena pasar bisa naik-turun sewaktu-waktu.
-        """)
-        
+        st.write("**Materi Singkat:** Jangan pernah memasukkan uang pinjaman atau uang SPP/belanja dapur ke market crypto karena pasar bisa naik-turun sewaktu-waktu.")
         st.markdown("#### 📝 Ujian Kasus Nyata Misi 1:")
         st.warning("⚠️ **Studi Kasus:** Kamu memiliki uang tabungan darurat sebesar Rp 2.000.000 yang akan dipakai minggu depan untuk bayar kontrakan. Tiba-tiba temanmu mengajak beli koin baru yang sedang viral. Apa tindakan yang benar?")
         
@@ -494,12 +497,11 @@ with tab_edu:
                     st.session_state.academy_step = 2
                     st.rerun()
             else:
-                st.error("❌ **SALUR/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
+                st.error("❌ **SALAH/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
 
     elif st.session_state.academy_step == 2:
         st.markdown("### 🕯️ Misi 2: Membaca Psikologi Candlestick")
         st.info("🎯 **Target Misi:** Menafsirkan arah tren lewat bentuk candle.")
-
         st.write("Perhatikan animasi pergerakan candle di bawah ini:")
 
         candlestick_anim = """
@@ -596,10 +598,7 @@ with tab_edu:
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
         st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
-
-        st.write("""
-        Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu (garis horizontal support/resistance) secara mandiri:
-        """)
+        st.write("Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu secara mandiri:")
 
         practice_chart_code = """
         <div class="tradingview-widget-container" style="height:480px;width:100%">
@@ -624,7 +623,6 @@ with tab_edu:
         </div>
         """
         components.html(practice_chart_code, height=490)
-
         st.success("🏆 **Selamat!** Kamu telah menyelesaikan seluruh rangkaian materi & ujian studi kasus interaktif di Akademi Rey472!")
 
 # ================= TAB 3: SENTIMEN & BERITA MARKET =================
@@ -642,26 +640,11 @@ with tab_sentimen:
         except ValueError:
             val_num = 50
             
-        if val_num <= 25:
-            color_code = "#FF4D4D"
-        elif val_num <= 45:
-            color_code = "#FFA500"
-        elif val_num <= 55:
-            color_code = "#FFD700"
-        elif val_num <= 75:
-            color_code = "#90EE90"
-        else:
-            color_code = "#00E676"
+        color_code = "#FF4D4D" if val_num <= 25 else "#FFA500" if val_num <= 45 else "#FFD700" if val_num <= 55 else "#90EE90" if val_num <= 75 else "#00E676"
 
         st.markdown(
             f"""
-            <div style="
-                border: 2px solid {color_code}; 
-                border-radius: 12px; 
-                padding: 20px; 
-                text-align: center; 
-                background-color: #1a1c23;
-                margin-bottom: 15px;">
+            <div style="border: 2px solid {color_code}; border-radius: 12px; padding: 20px; text-align: center; background-color: #1a1c23; margin-bottom: 15px;">
                 <h1 style="color: {color_code}; font-size: 64px; margin: 0;">{fng_val}</h1>
                 <h3 style="color: #FFFFFF; margin: 10px 0 0 0;">{fng_class.upper()}</h3>
             </div>
@@ -670,7 +653,7 @@ with tab_sentimen:
         )
         
         st.caption("💡 **Cara Membaca Index:**")
-        st.write("• **0-45 (Fear)**: Pasar sedang takut/diskonto. Sering dianggap area peluang beli (*Buy the Dip*).")
+        st.write("• **0-45 (Fear)**: Pasar sedang takut. Sering dianggap area peluang beli (*Buy the Dip*).")
         st.write("• **55-100 (Greed)**: Pasar sedang sangat optimis/FOMO. Hati-hati potensi koreksi mendadak.")
 
     with col_news:
@@ -825,12 +808,12 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
-                        response = client.models.generate_content(
-                            model='gemini-3.6-flash',
-                            contents=chat_prompt
-                        )
-                        reply = response.text
-                        st.markdown(reply)
-                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                        
+                        ai_chat_result = call_gemini_with_fallback(client, chat_prompt)
+                        if ai_chat_result:
+                            st.markdown(ai_chat_result)
+                            st.session_state.chat_history.append({"role": "assistant", "content": ai_chat_result})
+                        else:
+                            st.error("⚠️ Server sedang sibuk. Silakan coba tanyakan kembali.")
                     except Exception as err:
                         st.error(f"Gagal memproses pesan: {err}")
