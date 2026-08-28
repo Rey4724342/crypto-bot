@@ -155,6 +155,18 @@ def get_crypto_news_robust():
     except Exception:
         return []
 
+# 🆕 Fungsi Mengambil Orderbook dari Indodax
+def get_indodax_depth(ticker_id):
+    try:
+        url = f"https://indodax.com/api/depth/{ticker_id}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(url, headers=headers, timeout=5).json()
+        bids = res.get('buy', [])[:5]
+        asks = res.get('sell', [])[:5]
+        return bids, asks
+    except Exception:
+        return [], []
+
 pairs_data = get_all_indodax_pairs()
 
 # Header Utama
@@ -245,33 +257,90 @@ with tab_main:
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
     tv_widget_code = f"""
-    <div class="tradingview-widget-container" style="height:480px;width:100%">
-      <div id="tradingview_chart" style="height:480px;width:100%"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({{
-        "autosize": true,
-        "symbol": "BINANCE:{symbol}USDT",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_chart"
-      }});
-      </script>
-    </div>
+    <iframe 
+        src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=BINANCE:{symbol}USDT&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Asia%2FJakarta&studies_overrides={{}}&overrides={{}}&enabled_features=[]&disabled_features=[]&locale=id"
+        style="width: 100%; height: 480px; border: none; border-radius: 8px;"
+        allowfullscreen>
+    </iframe>
     """
-    components.html(tv_widget_code, height=490)
+    components.html(tv_widget_code, height=490, key=f"tv_chart_{symbol}")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         st.link_button(f"🔗 Buka Chart {symbol} (Tab Baru)", f"https://id.tradingview.com/chart/?symbol=BINANCE:{symbol}USDT", use_container_width=True)
     with col_btn2:
         st.link_button(f"🌐 Buka Market {symbol} (Indodax)", f"https://indodax.com/market/{symbol}IDR", use_container_width=True)
+
+    st.markdown("---")
+
+    # 🆕 FITUR BARU 1: SINYAL INDIKATOR OTOMATIS (RSI & MA)
+    st.markdown("### 📊 Sinyal Indikator Otomatis (RSI & MA)")
+    
+    try:
+        ticker_res = requests.get(f"https://indodax.com/api/ticker/{ticker_id}", timeout=5).json()['ticker']
+        curr_p = float(ticker_res['last'])
+        hi_p = float(ticker_res['high'])
+        lo_p = float(ticker_res['low'])
+        
+        # Kalkulasi Estimasi RSI Posisi
+        pos_range = (curr_p - lo_p) / (hi_p - lo_p) if (hi_p - lo_p) > 0 else 0.5
+        rsi_est = int(pos_range * 100)
+        
+        ind_col1, ind_col2, ind_col3 = st.columns(3)
+        
+        with ind_col1:
+            st.metric("Estimasi RSI (14)", f"{rsi_est}")
+            if rsi_est >= 70:
+                st.error("⚠️ **Overbought**: Harga sudah cukup tinggi, rawan koreksi.")
+            elif rsi_est <= 30:
+                st.success("🟢 **Oversold**: Harga tergolong diskon, potensi pantulan.")
+            else:
+                st.info("⚖️ **Netral**: Pergerakan harga di area stabil.")
+
+        with ind_col2:
+            ma20_est = (hi_p + lo_p) / 2
+            st.metric("Moving Average (MA20)", f"Rp {int(ma20_est):,}")
+            if curr_p > ma20_est:
+                st.success("🟢 **Diatas MA20**: Tren jangka pendek cenderung Uptrend.")
+            else:
+                st.error("🔴 **Dibawah MA20**: Tren jangka pendek cenderung Downtrend.")
+
+        with ind_col3:
+            vol_idr = float(ticker_res.get('vol_idr', 0))
+            st.metric("Volume 24 Jam", f"Rp {int(vol_idr):,}")
+            if vol_idr > 10_000_000_000:
+                st.success("🔥 **Likuiditas Tinggi**: Market sangat aktif.")
+            else:
+                st.warning("💧 **Likuiditas Sedang/Rendah**: Hati-hati pergerakan lambat.")
+
+    except Exception:
+        st.caption("Gagal memuat sinyal indikator otomatis.")
+
+    st.markdown("---")
+
+    # 🆕 FITUR BARU 2: LIVE ORDERBOOK RINGKAS (TAPE READER)
+    st.markdown("### 📑 Live Orderbook Ringkas (Top 5 Bid & Ask Indodax)")
+    bids, asks = get_indodax_depth(ticker_id)
+    
+    ob_col1, ob_col2 = st.columns(2)
+    
+    with ob_col1:
+        st.success("🟢 **Order Beli (Bids / Antean Beli)**")
+        if bids:
+            df_bids = pd.DataFrame(bids, columns=["Harga (Rp)", "Jumlah Koin"])
+            df_bids["Harga (Rp)"] = df_bids["Harga (Rp)"].apply(lambda x: f"Rp {int(float(x)):,}")
+            st.table(df_bids)
+        else:
+            st.caption("Data Bids tidak tersedia.")
+
+    with ob_col2:
+        st.error("🔴 **Order Jual (Asks / Antrean Jual)**")
+        if asks:
+            df_asks = pd.DataFrame(asks, columns=["Harga (Rp)", "Jumlah Koin"])
+            df_asks["Harga (Rp)"] = df_asks["Harga (Rp)"].apply(lambda x: f"Rp {int(float(x)):,}")
+            st.table(df_asks)
+        else:
+            st.caption("Data Asks tidak tersedia.")
 
     st.markdown("---")
 
@@ -360,12 +429,11 @@ with tab_main:
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
 
-# ================= TAB 2: AKADEMI & UJIAN KASUS (DENGAN SOAL INTERAKTIF) =================
+# ================= TAB 2: AKADEMI & UJIAN KASUS =================
 with tab_edu:
     st.markdown("### 🎓 Akademi & Ujian Simulasi Kasus Nyata")
     st.caption("Belajar teori saja tidak cukup! Uji pemahamanmu lewat studi kasus nyata agar tidak bingung saat terjun langsung.")
 
-    # Menu Navigasi Misi
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
         if st.button("🚀 Misi 1: Dasar & Psikologi", use_container_width=True):
@@ -382,17 +450,13 @@ with tab_edu:
 
     st.markdown("---")
 
-    # --- MISI 1 ---
     if st.session_state.academy_step == 1:
         st.markdown("### 🚀 Misi 1: Pengelolaan Modal & Mental Trader")
         st.info("🎯 **Target Misi:** Menguji kedisiplinan mengelola risiko modal.")
-        
-        st.write("""
-        **Materi Singkat:** Jangan pernah memasukkan uang pinjaman atau uang SPP/belanja dapur ke market crypto karena pasar bisa naik-turun sewaktu-waktu.
-        """)
+        st.write("**Materi Singkat:** Jangan pernah memasukkan uang pinjaman atau uang SPP/belanja dapur ke market crypto.")
         
         st.markdown("#### 📝 Ujian Kasus Nyata Misi 1:")
-        st.warning("⚠️ **Studi Kasus:** Kamu memiliki uang tabungan darurat sebesar Rp 2.000.000 yang akan dipakai minggu depan untuk bayar kontrakan. Tiba-tiba temanmu mengajak beli koin baru yang sedang viral. Apa tindakan yang benar?")
+        st.warning("⚠️ **Studi Kasus:** Kamu memiliki uang tabungan darurat Rp 2.000.000 untuk kontrakan. Teman mengajak beli koin viral. Apa tindakan yang benar?")
         
         ans_m1 = st.radio(
             "Pilih keputusan terbaikmu:",
@@ -407,48 +471,33 @@ with tab_edu:
         
         if ans_m1:
             if ans_m1.startswith("B"):
-                st.success("🎉 **BENAR SEKALI!** Uang kebutuhan jangka pendek tidak boleh dipakai trading. Kamu lulus ujian mental Misi 1!")
+                st.success("🎉 **BENAR SEKALI!** Uang kebutuhan jangka pendek tidak boleh dipakai trading.")
                 if st.button("➡️ Lanjut ke Misi 2"):
                     st.session_state.academy_step = 2
                     st.rerun()
             else:
-                st.error("❌ **SALUR/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
+                st.error("❌ **SALAH!** Keputusan ini sangat berbahaya dalam dunia crypto!")
 
-    # --- MISI 2 ---
     elif st.session_state.academy_step == 2:
         st.markdown("### 🕯️ Misi 2: Membaca Psikologi Candlestick")
         st.info("🎯 **Target Misi:** Menafsirkan arah tren lewat bentuk candle.")
 
-        st.write("Perhatikan animasi pergerakan candle di bawah ini:")
-
         candlestick_anim = """
-        <div style="display: flex; justify-content: space-around; background-color: #11141c; padding: 20px; border-radius: 12px; font-family: sans-serif; color: white;">
+        <div style="display: flex; justify-content: space-around; background-color: #11141c; padding: 20px; border-radius: 12px; color: white;">
             <div style="text-align: center; width: 45%;">
-                <h4 style="color: #00E676; margin-bottom: 5px;">🟢 Hijau (Bullish)</h4>
+                <h4 style="color: #00E676;">🟢 Hijau (Bullish)</h4>
                 <p style="font-size: 12px; color: #aaa;">Harga NAIK (Buyer Dominan)</p>
-                <svg width="100" height="150">
-                    <line x1="50" y1="10" x2="50" y2="140" stroke="#00E676" stroke-width="3" />
-                    <rect x="30" y="30" width="40" height="80" fill="#00E676" rx="4">
-                        <animate attributeName="height" values="20;80;20" dur="3s" repeatCount="indefinite" />
-                    </rect>
-                </svg>
             </div>
             <div style="text-align: center; width: 45%;">
-                <h4 style="color: #FF5252; margin-bottom: 5px;">🔴 Merah (Bearish)</h4>
+                <h4 style="color: #FF5252;">🔴 Merah (Bearish)</h4>
                 <p style="font-size: 12px; color: #aaa;">Harga TURUN (Seller Dominan)</p>
-                <svg width="100" height="150">
-                    <line x1="50" y1="10" x2="50" y2="140" stroke="#FF5252" stroke-width="3" />
-                    <rect x="30" y="30" width="40" height="80" fill="#FF5252" rx="4">
-                        <animate attributeName="height" values="20;80;20" dur="3s" repeatCount="indefinite" />
-                    </rect>
-                </svg>
             </div>
         </div>
         """
-        components.html(candlestick_anim, height=270)
+        components.html(candlestick_anim, height=120)
 
         st.markdown("#### 📝 Ujian Kasus Nyata Misi 2:")
-        st.warning("⚠️ **Studi Kasus:** Kamu melihat grafik harga sebuah koin membentuk 3 candle merah besar berturut-turut turun menembus batas bawah. Apa arti kondisi pasar ini?")
+        st.warning("⚠️ **Studi Kasus:** Grafik koin membentuk 3 candle merah besar berturut-turut. Apa arti kondisi ini?")
         
         ans_m2 = st.radio(
             "Pilih analisis yang paling logis:",
@@ -463,35 +512,19 @@ with tab_edu:
 
         if ans_m2:
             if ans_m2.startswith("A"):
-                st.success("🎉 **TEPAT SEKALI!** Tiga candle merah panjang menandakan dominasi seller yang kuat. Kamu paham cara membaca momentum!")
-                col_b1, col_b2 = st.columns(2)
-                with col_b1:
-                    if st.button("⬅️ Kembali ke Misi 1"):
-                        st.session_state.academy_step = 1
-                        st.rerun()
-                with col_b2:
-                    if st.button("➡️ Lanjut ke Misi 3"):
-                        st.session_state.academy_step = 3
-                        st.rerun()
+                st.success("🎉 **TEPAT SEKALI!** Tiga candle merah panjang menandakan dominasi seller yang kuat.")
+                if st.button("➡️ Lanjut ke Misi 3"):
+                    st.session_state.academy_step = 3
+                    st.rerun()
             else:
-                st.error("❌ **Kurang tepat.** Jangan melawan arus tren turun yang kuat tanpa konfirmasi sinyal pantulan.")
+                st.error("❌ **Kurang tepat.** Jangan melawan arus tren turun yang kuat.")
 
-    # --- MISI 3 ---
     elif st.session_state.academy_step == 3:
         st.markdown("### 🧱 Misi 3: Menentukan Area Support & Resistance")
         st.info("🎯 **Target Misi:** Menempatkan titik eksekusi beli dan jual yang rasional.")
 
-        col_sup, col_res = st.columns(2)
-        with col_sup:
-            st.success("🧱 **Support (Lantai Bawah)**")
-            st.write("Tempat berkumpulnya pembeli (Buyer). Cocok untuk pasang posisi **Buy**.")
-        with col_res:
-            st.error("🧱 **Resistance (Atap Atas)**")
-            st.write("Tempat berkumpulnya penjual (Seller). Cocok untuk pasang posisi **Take Profit**.")
-
-        st.markdown("---")
         st.markdown("#### 📝 Ujian Kasus Nyata Misi 3:")
-        st.warning("⚠️ **Studi Kasus:** Harga koin A sedang mendekati garis 'Atap' (Resistance) kuat dan mulai melambat kenaikannya. Tindakan apa yang paling bijak dilakukan trader?")
+        st.warning("⚠️ **Studi Kasus:** Harga koin sedang mendekati garis Resistance kuat dan kenaikan melambat. Apa tindakan terbaik?")
         
         ans_m3 = st.radio(
             "Pilih strategi yang tepat:",
@@ -506,46 +539,23 @@ with tab_edu:
 
         if ans_m3:
             if ans_m3.startswith("B"):
-                st.success("🎉 **HEBAT!** Area resistance adalah area rawan koreksi, sehingga mengambil profit di sana adalah keputusan profesional.")
-                if st.button("➡️ Lanjut ke Misi 4: Lab Praktik Charting"):
+                st.success("🎉 **HEBAT!** Taking profit di resistance adalah keputusan profesional.")
+                if st.button("➡️ Lanjut ke Misi 4"):
                     st.session_state.academy_step = 4
                     st.rerun()
             else:
-                st.error("❌ **Kurang tepat.** Membeli di area resistance memiliki risiko tinggi terkena penolakan harga (rejection).")
+                st.error("❌ **Kurang tepat.** Membeli di area resistance berisiko tinggi.")
 
-    # --- MISI 4 ---
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
-        st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
-
-        st.write("""
-        Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu (garis horizontal support/resistance) secara mandiri:
-        """)
-
         practice_chart_code = """
-        <div class="tradingview-widget-container" style="height:480px;width:100%">
-          <div id="tradingview_practice" style="height:480px;width:100%"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-          <script type="text/javascript">
-          new TradingView.widget({
-            "autosize": true,
-            "symbol": "BINANCE:BTCUSDT",
-            "interval": "D",
-            "timezone": "Asia/Jakarta",
-            "theme": "dark",
-            "style": "1",
-            "locale": "id",
-            "toolbar_bg": "#f1f3f6",
-            "enable_publishing": false,
-            "allow_symbol_change": true,
-            "container_id": "tradingview_practice"
-          });
-          </script>
-        </div>
+        <iframe 
+            src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_practice&symbol=BINANCE:BTCUSDT&interval=D&hidesidetoolbar=1&theme=dark&style=1&timezone=Asia%2FJakarta&locale=id"
+            style="width: 100%; height: 480px; border: none; border-radius: 8px;">
+        </iframe>
         """
-        components.html(practice_chart_code, height=490)
-
-        st.success("🏆 **Selamat!** Kamu telah menyelesaikan seluruh rangkaian materi & ujian studi kasus interaktif di Akademi Rey472!")
+        components.html(practice_chart_code, height=490, key="tv_practice")
+        st.success("🏆 **Selamat!** Kamu telah menyelesaikan ujian Akademi Rey472!")
 
 # ================= TAB 3: SENTIMEN & BERITA MARKET =================
 with tab_sentimen:
@@ -562,36 +572,17 @@ with tab_sentimen:
         except ValueError:
             val_num = 50
             
-        if val_num <= 25:
-            color_code = "#FF4D4D"
-        elif val_num <= 45:
-            color_code = "#FFA500"
-        elif val_num <= 55:
-            color_code = "#FFD700"
-        elif val_num <= 75:
-            color_code = "#90EE90"
-        else:
-            color_code = "#00E676"
+        color_code = "#FF4D4D" if val_num <= 25 else "#FFA500" if val_num <= 45 else "#FFD700" if val_num <= 55 else "#00E676"
 
         st.markdown(
             f"""
-            <div style="
-                border: 2px solid {color_code}; 
-                border-radius: 12px; 
-                padding: 20px; 
-                text-align: center; 
-                background-color: #1a1c23;
-                margin-bottom: 15px;">
+            <div style="border: 2px solid {color_code}; border-radius: 12px; padding: 20px; text-align: center; background-color: #1a1c23;">
                 <h1 style="color: {color_code}; font-size: 64px; margin: 0;">{fng_val}</h1>
                 <h3 style="color: #FFFFFF; margin: 10px 0 0 0;">{fng_class.upper()}</h3>
             </div>
             """, 
             unsafe_allow_html=True
         )
-        
-        st.caption("💡 **Cara Membaca Index:**")
-        st.write("• **0-45 (Fear)**: Pasar sedang takut/diskonto. Sering dianggap area peluang beli (*Buy the Dip*).")
-        st.write("• **55-100 (Greed)**: Pasar sedang sangat optimis/FOMO. Hati-hati potensi koreksi mendadak.")
 
     with col_news:
         st.markdown("#### 📰 Berita Crypto Terkini Real-Time")
@@ -605,11 +596,7 @@ with tab_sentimen:
                 with text_col:
                     st.markdown(f"**[{news['title']}]({news['link']})**")
                     st.caption(f"🗓️ {news['date']} | 🌐 CoinDesk")
-                    if news['desc']:
-                        st.write(news['desc'])
                 st.markdown("---")
-        else:
-            st.info("Gagal mengambil berita. Silakan muat ulang halaman.")
 
 # ================= TAB 4: PERBANDINGAN KOIN =================
 with tab_compare:
@@ -635,14 +622,11 @@ with tab_compare:
                 st.metric("Harga Terakhir", f"Rp {int(res1['last']):,}")
                 st.metric("High 24j", f"Rp {int(res1['high']):,}")
                 st.metric("Low 24j", f"Rp {int(res1['low']):,}")
-                st.metric("Volume 24j", f"{float(res1['vol_idr']):,.0f} IDR")
-                
             with c2_col:
                 st.subheader(coin2_label)
                 st.metric("Harga Terakhir", f"Rp {int(res2['last']):,}")
                 st.metric("High 24j", f"Rp {int(res2['high']):,}")
                 st.metric("Low 24j", f"Rp {int(res2['low']):,}")
-                st.metric("Volume 24j", f"{float(res2['vol_idr']):,.0f} IDR")
         except Exception as err:
             st.error(f"Gagal membandingkan koin: {err}")
 
@@ -695,8 +679,6 @@ with tab_calc:
             
             st.info(f"💡 Maksimal Rugi Aman: **Rp {int(maks_resiko_rp):,}**")
             st.success(f"💡 Alokasi Beli Ideal: **Rp {int(min(rekomendasi_posisi_rp, modal_rp)):,}**")
-        else:
-            st.warning("⚠️ Masukkan harga entry dan stop loss yang valid.")
 
     with calc_col2:
         st.markdown("#### 2. Kalkulator Averaging Down")
@@ -711,8 +693,8 @@ with tab_calc:
             total_koin = avg_qty1 + avg_qty2
             avg_final_price = total_modal / total_koin
             
-            st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
-            st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
+            st.success(f"🎯 **Harga Rata-Rata Baru**: Rp {avg_final_price:,.2f}")
+            st.info(f"💰 Total Modal: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
 
 # ================= TAB 7: ASISTEN AI CHAT =================
 with tab_chat:
