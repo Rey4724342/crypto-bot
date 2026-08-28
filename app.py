@@ -5,8 +5,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import re
 import time
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 st.set_page_config(
     page_title="Crypto AI Trading Hub & Analyst Pro - Rey472", 
@@ -157,27 +156,28 @@ def get_indodax_depth(ticker_id):
     except Exception:
         return [], []
 
-# 🤖 Helper Function Panggilan Gemini Aman (Anti Fail & Retry Otomatis)
-def call_gemini_fast(client, prompt):
-    config = types.GenerateContentConfig(
-        system_instruction="Jawab sangat ringkas, padat, to the point, maksimal 4 baris.",
-        max_output_tokens=250
-    )
-    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
-    
-    for model_name in models_to_try:
-        for attempt in range(2):
-            try:
-                res = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=config
-                )
-                if res and res.text:
-                    return res.text
-            except Exception:
-                time.sleep(1)
-                continue
+# 🤖 Helper Function Panggilan Gemini Aman & Stabil
+def call_gemini_fast(api_key, prompt):
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            generation_config={
+                "temperature": 0.3,
+                "max_output_tokens": 200,
+            }
+        )
+        response = model.generate_content(prompt)
+        if response and response.text:
+            return response.text
+    except Exception:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-pro")
+            response = model.generate_content(prompt)
+            if response and response.text:
+                return response.text
+        except Exception:
+            pass
     return None
 
 pairs_data = get_all_indodax_pairs()
@@ -396,9 +396,8 @@ with tab_main:
                 st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
             else:
                 with st.spinner("AI sedang menganalisis cepat..."):
-                    client = genai.Client(api_key=api_key)
-                    
                     prompt = f"""
+                    Anda adalah pakar analisis trading crypto.
                     Koin: {selected_info['clean_name']}
                     Strategi: {trading_style}
                     Harga Beli User: Rp {my_buy_price:,}
@@ -406,12 +405,12 @@ with tab_main:
                     PnL: {pnl_pct:.2f}%
                     High 24h: Rp {high:,} | Low 24h: Rp {low:,}
 
-                    Berikan respon singkat:
+                    Berikan respon singkat maks 3 baris:
                     1. Rekomendasi Aksi (HOLD/TP/SL/BUY)
-                    2. TP & SL Rencana
+                    2. Rencana TP & SL Singkat
                     """
                     
-                    reply_text = call_gemini_fast(client, prompt)
+                    reply_text = call_gemini_fast(api_key, prompt)
                     st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
                     
                     if reply_text:
@@ -576,7 +575,6 @@ with tab_sentimen:
             unsafe_allow_html=True
         )
 
-        # 💡 PENJELASAN SENTIMEN GREED & SARAN AKSI TRADING
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("##### 📌 Panduan Aksi Trading Berdasarkan Indikator:")
         
@@ -731,16 +729,12 @@ with tab_chat:
         else:
             with st.chat_message("assistant"):
                 with st.spinner("AI sedang berpikir..."):
-                    try:
-                        client = genai.Client(api_key=api_key)
-                        chat_prompt = f"Koin terpilih: {symbol}.\nPertanyaan: {user_query}"
-                        reply = call_gemini_fast(client, chat_prompt)
-                        if reply:
-                            st.markdown(reply)
-                            st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                        else:
-                            fallback_msg = "Maaf, server AI sedang mengalami lonjakan trafik tinggi. Silakan ulangi pertanyaanmu dalam beberapa detik."
-                            st.warning(fallback_msg)
-                            st.session_state.chat_history.append({"role": "assistant", "content": fallback_msg})
-                    except Exception as err:
-                        st.error(f"Gagal memproses pesan: {err}")
+                    chat_prompt = f"Koin terpilih: {symbol}.\nPertanyaan: {user_query}"
+                    reply = call_gemini_fast(api_key, chat_prompt)
+                    if reply:
+                        st.markdown(reply)
+                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    else:
+                        fallback_msg = "Maaf, server AI sedang padat. Silakan ulangi pertanyaanmu dalam beberapa detik."
+                        st.warning(fallback_msg)
+                        st.session_state.chat_history.append({"role": "assistant", "content": fallback_msg})
