@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import xml.etree.ElementTree as ET
 import re
+import time
 from google import genai
 from google.genai import types
 
@@ -156,25 +157,28 @@ def get_indodax_depth(ticker_id):
     except Exception:
         return [], []
 
-# Helper Function Panggilan Gemini Aman (Anti 503 Server Busy)
+# 🤖 Helper Function Panggilan Gemini Aman (Anti Fail & Retry Otomatis)
 def call_gemini_fast(client, prompt):
     config = types.GenerateContentConfig(
         system_instruction="Jawab sangat ringkas, padat, to the point, maksimal 4 baris.",
         max_output_tokens=250
     )
-    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']
     
     for model_name in models_to_try:
-        try:
-            res = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=config
-            )
-            return res.text
-        except Exception:
-            continue
-    raise Exception("Server Gemini sedang padat, silakan coba beberapa detik lagi.")
+        for attempt in range(2):
+            try:
+                res = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=config
+                )
+                if res and res.text:
+                    return res.text
+            except Exception:
+                time.sleep(1)
+                continue
+    return None
 
 pairs_data = get_all_indodax_pairs()
 
@@ -358,7 +362,6 @@ with tab_main:
 
     st.markdown(f"### 💼 Analisis Posisi Portofolio Saya ({symbol})")
 
-    # FORM TANPA JUMLAH KOIN & TANPA PERINGATAN KUNING
     with st.form("portfolio_form"):
         my_buy_price = st.number_input(f"Harga Beli Kamu (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
         btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True)
@@ -410,7 +413,23 @@ with tab_main:
                     
                     reply_text = call_gemini_fast(client, prompt)
                     st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
-                    st.info(reply_text)
+                    
+                    if reply_text:
+                        st.info(reply_text)
+                    else:
+                        st.warning("⚠️ Server AI Google sedang mengalami trafik tinggi. Berpindah ke analisis sinyal indikator lokal:")
+                        if my_buy_price > 0:
+                            if pnl_pct >= 5:
+                                st.success("🟢 **Rekomendasi:** TAKE PROFIT / AMBIL UNTUNG (Posisi profit > 5%).")
+                            elif pnl_pct <= -5:
+                                st.error("🔴 **Rekomendasi:** STOP LOSS / PERTIMBANGKAN CUT LOSS (Posisi minus > 5%).")
+                            else:
+                                st.info("⚖️ **Rekomendasi:** HOLD (Pergerakan harga masih dalam rentang wajar).")
+                        else:
+                            if current_market_price <= low * 1.02:
+                                st.success("🟢 **Rekomendasi:** POTENSI BUY (Harga dekat titik terendah 24 jam).")
+                            else:
+                                st.info("⚖️ **Rekomendasi:** WAIT & SEE (Pantau pergerakan harga terlebih dahulu).")
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
@@ -537,7 +556,7 @@ with tab_sentimen:
     col_fg, col_news = st.columns([1, 2])
     
     with col_fg:
-        st.markdown("#### 😱 Fear & Greed Index")
+        st.markdown("#### 😱 Crypto Fear & Greed Index")
         fng_val, fng_class = get_fear_and_greed()
         
         try:
@@ -556,6 +575,21 @@ with tab_sentimen:
             """, 
             unsafe_allow_html=True
         )
+
+        # 💡 PENJELASAN SENTIMEN GREED & SARAN AKSI TRADING
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("##### 📌 Panduan Aksi Trading Berdasarkan Indikator:")
+        
+        if val_num >= 75:
+            st.error("🔥 **EXTREME GREED (Sangat Rakus):** Pasar mengalami euforia & FOMO tinggi. **Saran:** Waktu yang tepat untuk Take Profit (Jual secara bertahap). Hindari beli baru di pucuk!")
+        elif val_num >= 55:
+            st.warning("🤑 **GREED (Rakus):** Optimisme pasar meningkat pesat. **Saran:** Amankan sebagian keuntungan dan pasang Stop Loss yang ketat.")
+        elif val_num <= 25:
+            st.success("💎 **EXTREME FEAR (Sangat Takut):** Pasar ketakutan berlebihan & harga diskon besar. **Saran:** Peluang emas untuk mencari koin bagus (Buy the Dip).")
+        elif val_num <= 45:
+            st.info("😰 **FEAR (Takut):** Pasar ragu-ragu dan cenderung turun. **Saran:** Pantau koin potensial dan masuk bertahap.")
+        else:
+            st.info("⚖️ **NEUTRAL (Netral):** Pergerakan pasar seimbang. **Saran:** Ikuti tren teknikal teknis (Support/Resistance).")
 
     with col_news:
         st.markdown("#### 📰 Berita Crypto Terkini Real-Time")
@@ -701,7 +735,12 @@ with tab_chat:
                         client = genai.Client(api_key=api_key)
                         chat_prompt = f"Koin terpilih: {symbol}.\nPertanyaan: {user_query}"
                         reply = call_gemini_fast(client, chat_prompt)
-                        st.markdown(reply)
-                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                        if reply:
+                            st.markdown(reply)
+                            st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                        else:
+                            fallback_msg = "Maaf, server AI sedang mengalami lonjakan trafik tinggi. Silakan ulangi pertanyaanmu dalam beberapa detik."
+                            st.warning(fallback_msg)
+                            st.session_state.chat_history.append({"role": "assistant", "content": fallback_msg})
                     except Exception as err:
                         st.error(f"Gagal memproses pesan: {err}")
