@@ -5,7 +5,8 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import re
 import time
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 st.set_page_config(
     page_title="Crypto AI Trading Hub & Analyst Pro - Rey472", 
@@ -156,28 +157,22 @@ def get_indodax_depth(ticker_id):
     except Exception:
         return [], []
 
-# 🤖 Helper Function Panggilan Gemini Aman & Stabil
+# 🤖 Helper Function Panggilan Gemini Aman & Bekerja Stabil
 def call_gemini_fast(api_key, prompt):
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            generation_config={
-                "temperature": 0.3,
-                "max_output_tokens": 200,
-            }
-        )
-        response = model.generate_content(prompt)
-        if response and response.text:
-            return response.text
-    except Exception:
+    models = ['gemini-2.5-flash', 'gemini-1.5-flash']
+    client = genai.Client(api_key=api_key)
+    
+    for m in models:
         try:
-            model = genai.GenerativeModel("gemini-1.5-pro")
-            response = model.generate_content(prompt)
-            if response and response.text:
-                return response.text
+            res = client.models.generate_content(
+                model=m,
+                contents=prompt,
+                config=types.GenerateContentConfig(max_output_tokens=200)
+            )
+            if res and res.text:
+                return res.text
         except Exception:
-            pass
+            continue
     return None
 
 pairs_data = get_all_indodax_pairs()
@@ -397,7 +392,7 @@ with tab_main:
             else:
                 with st.spinner("AI sedang menganalisis cepat..."):
                     prompt = f"""
-                    Anda adalah pakar analisis trading crypto.
+                    Anda adalah asisten trading crypto.
                     Koin: {selected_info['clean_name']}
                     Strategi: {trading_style}
                     Harga Beli User: Rp {my_buy_price:,}
@@ -405,9 +400,9 @@ with tab_main:
                     PnL: {pnl_pct:.2f}%
                     High 24h: Rp {high:,} | Low 24h: Rp {low:,}
 
-                    Berikan respon singkat maks 3 baris:
+                    Berikan respon singkat max 3 baris:
                     1. Rekomendasi Aksi (HOLD/TP/SL/BUY)
-                    2. Rencana TP & SL Singkat
+                    2. Target TP & SL Singkat
                     """
                     
                     reply_text = call_gemini_fast(api_key, prompt)
