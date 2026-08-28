@@ -155,7 +155,6 @@ def get_crypto_news_robust():
     except Exception:
         return []
 
-# 🆕 Fungsi Mengambil Orderbook dari Indodax
 def get_indodax_depth(ticker_id):
     try:
         url = f"https://indodax.com/api/depth/{ticker_id}"
@@ -263,7 +262,7 @@ with tab_main:
         allowfullscreen>
     </iframe>
     """
-    components.html(tv_widget_code, height=490, key=f"tv_chart_{symbol}")
+    components.html(tv_widget_code, height=490)
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -273,7 +272,7 @@ with tab_main:
 
     st.markdown("---")
 
-    # 🆕 FITUR BARU 1: SINYAL INDIKATOR OTOMATIS (RSI & MA)
+    # SINYAL INDIKATOR OTOMATIS (RSI & MA)
     st.markdown("### 📊 Sinyal Indikator Otomatis (RSI & MA)")
     
     try:
@@ -282,7 +281,6 @@ with tab_main:
         hi_p = float(ticker_res['high'])
         lo_p = float(ticker_res['low'])
         
-        # Kalkulasi Estimasi RSI Posisi
         pos_range = (curr_p - lo_p) / (hi_p - lo_p) if (hi_p - lo_p) > 0 else 0.5
         rsi_est = int(pos_range * 100)
         
@@ -318,14 +316,14 @@ with tab_main:
 
     st.markdown("---")
 
-    # 🆕 FITUR BARU 2: LIVE ORDERBOOK RINGKAS (TAPE READER)
+    # LIVE ORDERBOOK RINGKAS
     st.markdown("### 📑 Live Orderbook Ringkas (Top 5 Bid & Ask Indodax)")
     bids, asks = get_indodax_depth(ticker_id)
     
     ob_col1, ob_col2 = st.columns(2)
     
     with ob_col1:
-        st.success("🟢 **Order Beli (Bids / Antean Beli)**")
+        st.success("🟢 **Order Beli (Bids / Antrean Beli)**")
         if bids:
             df_bids = pd.DataFrame(bids, columns=["Harga (Rp)", "Jumlah Koin"])
             df_bids["Harga (Rp)"] = df_bids["Harga (Rp)"].apply(lambda x: f"Rp {int(float(x)):,}")
@@ -554,7 +552,7 @@ with tab_edu:
             style="width: 100%; height: 480px; border: none; border-radius: 8px;">
         </iframe>
         """
-        components.html(practice_chart_code, height=490, key="tv_practice")
+        components.html(practice_chart_code, height=490)
         st.success("🏆 **Selamat!** Kamu telah menyelesaikan ujian Akademi Rey472!")
 
 # ================= TAB 3: SENTIMEN & BERITA MARKET =================
@@ -597,6 +595,8 @@ with tab_sentimen:
                     st.markdown(f"**[{news['title']}]({news['link']})**")
                     st.caption(f"🗓️ {news['date']} | 🌐 CoinDesk")
                 st.markdown("---")
+        else:
+            st.info("Sedang memuat berita pasar...")
 
 # ================= TAB 4: PERBANDINGAN KOIN =================
 with tab_compare:
