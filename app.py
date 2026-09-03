@@ -52,8 +52,10 @@ if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
 if 'signal_data' not in st.session_state:
     st.session_state.signal_data = None
+if 'ai_analysis_result' not in st.session_state:
+    st.session_state.ai_analysis_result = None
 
-# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI (ANTI 503 VIA AUTO-RETRY & FALLBACK)
+# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI
 def call_gemini_ai(prompt, api_key):
     client = genai.Client(api_key=api_key)
     models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
@@ -268,7 +270,7 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🎯 VISUAL MARKER BADGE (Akan Muncul Ketika Tombol Analisis Ditekan)
+    # 🎯 VISUAL MARKER BADGE (Sinyal Harga Di Atas Grafik)
     if st.session_state.signal_data and st.session_state.signal_data.get('symbol') == symbol:
         sig = st.session_state.signal_data
         st.markdown(f"#### 🎯 Marker Sinyal Trading AI ({symbol})")
@@ -277,7 +279,7 @@ with tab_main:
             st.markdown(
                 f"""
                 <div style="background-color: #1b382b; border: 2px solid #00E676; border-radius: 10px; padding: 12px; text-align: center;">
-                    <span style="color: #00E676; font-weight: bold; font-size: 16px;">🟢 AREA BUY (BEI)</span><br>
+                    <span style="color: #00E676; font-weight: bold; font-size: 16px;">🟢 AREA BUY (BELI)</span><br>
                     <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['buy_price']:,}</span>
                 </div>
                 """, unsafe_allow_html=True
@@ -417,12 +419,15 @@ with tab_main:
                     """
                     
                     ai_reply = call_gemini_ai(prompt, api_key)
-                    st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
-                    st.info(ai_reply)
-                    st.rerun()
+                    st.session_state.ai_analysis_result = ai_reply
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
+
+    # Menampilkan Hasil Penjelasan AI (Disimpan Dalam Session State Agar Tidak Hilang)
+    if st.session_state.ai_analysis_result:
+        st.markdown("### 🤖 Hasil Penjelasan & Rekomendasi AI Rey472")
+        st.info(st.session_state.ai_analysis_result)
 
 # ================= TAB 2: AKADEMI & UJIAN KASUS =================
 with tab_edu:
@@ -575,7 +580,7 @@ with tab_edu:
 
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
-        st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
+        st.info("🎯 **Target Misi:** Mempublikkan analisis mandiri di chart profesional.")
 
         st.write("""
         Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu (garis horizontal support/resistance) secara mandiri:
