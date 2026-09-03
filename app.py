@@ -349,13 +349,15 @@ with tab_main:
     st.caption("💡 *Ketik angka polos tanpa titik/koma (misal: 1324307).*")
 
     with st.form("portfolio_form"):
-        col_input1, col_input2, col_input3 = st.columns(3)
+        col_input1, col_input2, col_input3, col_input4 = st.columns(4)
         with col_input1:
             my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
         with col_input2:
-            my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
+            my_amount_coin = st.number_input(f"Jumlah Koin {symbol}:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
         with col_input3:
             target_tp = st.number_input(f"Target Take Profit (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
+        with col_input4:
+            stop_loss_input = st.number_input(f"Rencana Stop Loss (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
         
         btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi Saya", use_container_width=True)
 
@@ -386,6 +388,20 @@ with tab_main:
                 else:
                     c3.metric(label="Status PnL (Kerugian)", value=f"-Rp {abs(int(pnl_rp)):,}", delta=f"{pnl_pct:.2f}%")
 
+                # 📊 FITUR 3: INDIKATOR MANAJEMEN RISIKO (RISK-TO-REWARD RATIO)
+                if target_tp > my_buy_price and stop_loss_input > 0 and stop_loss_input < my_buy_price:
+                    potential_reward = target_tp - my_buy_price
+                    potential_risk = my_buy_price - stop_loss_input
+                    rr_ratio = potential_reward / potential_risk if potential_risk > 0 else 0
+                    
+                    st.markdown("---")
+                    if rr_ratio >= 2.0:
+                        st.success(f"⚖️ **Rasio Risk-to-Reward:** 1 : {rr_ratio:.2f} *(Kategori: Sangat Baik / Ideal)*")
+                    elif rr_ratio >= 1.0:
+                        st.warning(f"⚖️ **Rasio Risk-to-Reward:** 1 : {rr_ratio:.2f} *(Kategori: Cukup / Moderat)*")
+                    else:
+                        st.error(f"⚖️ **Rasio Risk-to-Reward:** 1 : {rr_ratio:.2f} *(Kategori: Berisiko Tinggi / Potensi Potong Rugi Lebih Besar dari Untung)*")
+
                 # 📊 TARGET PROFIT PROGRESS BAR
                 if target_tp > my_buy_price:
                     progress_pct = min(max((current_market_price - my_buy_price) / (target_tp - my_buy_price), 0.0), 1.0)
@@ -399,6 +415,7 @@ with tab_main:
                     st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
                 else:
                     with st.spinner(f"AI sedang merespon analisis cepat koin {symbol}..."):
+                        # FITUR 4: PROMPT AI DIOPTIMALKAN UNTUK EVALUASI RISIKO & SL
                         prompt = f"""
                         Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
                         Gaya Trading Pengguna: {trading_style}
@@ -408,15 +425,17 @@ with tab_main:
                         - Harga Beli Awal Pengguna: Rp {my_buy_price:,}
                         - Harga Pasar Saat Ini: Rp {current_market_price:,}
                         - Status Profit/Loss Sementara: {pnl_pct:.2f}% (Rp {int(pnl_rp):,})
+                        - Target TP Pengguna: Rp {target_tp:,}
+                        - Rencana Stop Loss (SL) Pengguna: Rp {stop_loss_input:,}
                         - Harga Tertinggi 24j: Rp {high:,}
                         - Harga Terendah 24j: Rp {low:,}
 
                         Berikan analisis ringkas, padat, dan taktis dalam format poin rapi:
                         1. 🌐 Analisis Posisi Saat Ini
                         2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT / CUT LOSS / BUY ON DIP)
-                        3. 🛑 Saran Harga Stop Loss (SL) yang aman.
-                        4. 🎯 Target Jual / Take Profit (TP1 & TP2) dalam Rupiah.
-                        5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
+                        3. 🛑 Evaluasi Rencana Stop Loss (SL) Pengguna (Apakah SL Rp {stop_loss_input:,} sudah aman dari Stop Loss Hunting/Swing Rendah?).
+                        4. 🎯 Target Jual / Take Profit (TP1 & TP2) Rekomendasi AI dalam Rupiah.
+                        5. 💡 Catatan Khusus AI Rey472 Mengenai Manajemen Risiko Posisi Ini.
                         """
                         
                         ai_reply = call_gemini_ai(prompt, api_key)
