@@ -50,6 +50,8 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
+if 'signal_data' not in st.session_state:
+    st.session_state.signal_data = None
 
 # 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI (ANTI 503 VIA AUTO-RETRY & FALLBACK)
 def call_gemini_ai(prompt, api_key):
@@ -266,6 +268,40 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
+    # 🎯 VISUAL MARKER BADGE (Akan Muncul Ketika Tombol Analisis Ditekan)
+    if st.session_state.signal_data and st.session_state.signal_data.get('symbol') == symbol:
+        sig = st.session_state.signal_data
+        st.markdown(f"#### 🎯 Marker Sinyal Trading AI ({symbol})")
+        m_col1, m_col2, m_col3 = st.columns(3)
+        with m_col1:
+            st.markdown(
+                f"""
+                <div style="background-color: #1b382b; border: 2px solid #00E676; border-radius: 10px; padding: 12px; text-align: center;">
+                    <span style="color: #00E676; font-weight: bold; font-size: 16px;">🟢 AREA BUY (BEI)</span><br>
+                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['buy_price']:,}</span>
+                </div>
+                """, unsafe_allow_html=True
+            )
+        with m_col2:
+            st.markdown(
+                f"""
+                <div style="background-color: #3d1c1d; border: 2px solid #FF5252; border-radius: 10px; padding: 12px; text-align: center;">
+                    <span style="color: #FF5252; font-weight: bold; font-size: 16px;">🔴 AREA TAKE PROFIT (SELL)</span><br>
+                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['tp_price']:,}</span>
+                </div>
+                """, unsafe_allow_html=True
+            )
+        with m_col3:
+            st.markdown(
+                f"""
+                <div style="background-color: #382c19; border: 2px solid #FFC107; border-radius: 10px; padding: 12px; text-align: center;">
+                    <span style="color: #FFC107; font-weight: bold; font-size: 16px;">🛑 STOP LOSS (SL)</span><br>
+                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['sl_price']:,}</span>
+                </div>
+                """, unsafe_allow_html=True
+            )
+        st.markdown("<br>", unsafe_allow_html=True)
+
     # 📊 GRAFIK TRADINGVIEW
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
     
@@ -322,6 +358,14 @@ with tab_main:
             high = int(res['high'])
             low = int(res['low'])
 
+            # Menyimpan Data Sinyal untuk Marker Visual Grafik
+            st.session_state.signal_data = {
+                'symbol': symbol,
+                'buy_price': int(low * 1.01),
+                'tp_price': int(high * 0.99),
+                'sl_price': int(low * 0.97)
+            }
+
             if current_market_price <= low * 1.02:
                 st.warning("⚠️ **Perhatian Risk**: Harga pasar saat ini berada sangat dekat dengan titik terendah (Low 24j). Pertimbangkan konfirmasi pantulan support.")
             elif current_market_price >= high * 0.98:
@@ -375,6 +419,7 @@ with tab_main:
                     ai_reply = call_gemini_ai(prompt, api_key)
                     st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
                     st.info(ai_reply)
+                    st.rerun()
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
