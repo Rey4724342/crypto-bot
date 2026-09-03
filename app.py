@@ -50,6 +50,31 @@ if 'chat_history' not in st.session_state:
 if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
 
+# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI TANGGUH
+def call_gemini_ai(prompt, api_key):
+    try:
+        client = genai.Client(api_key=api_key)
+        # Coba model utama gemini-2.5-flash
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        if response and response.text:
+            return response.text
+    except Exception:
+        # Fallback ke model gemini-2.0-flash jika model utama sibuk/error
+        try:
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=prompt
+            )
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            raise e
+    return None
+
 @st.cache_data(ttl=300)
 def get_indodax_summary():
     try:
@@ -327,8 +352,6 @@ with tab_main:
                 st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
             else:
                 with st.spinner(f"AI sedang merespon analisis cepat koin {symbol}..."):
-                    client = genai.Client(api_key=api_key)
-                    
                     prompt = f"""
                     Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
                     Gaya Trading Pengguna: {trading_style}
@@ -349,23 +372,21 @@ with tab_main:
                     5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
                     """
                     
-                    response = client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=prompt
-                    )
-                    
-                    st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
-                    st.info(response.text)
+                    ai_reply = call_gemini_ai(prompt, api_key)
+                    if ai_reply:
+                        st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
+                        st.info(ai_reply)
+                    else:
+                        st.error("⚠️ Server Gemini AI sedang sibuk. Silakan coba klik tombol sekali lagi.")
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
 
-# ================= TAB 2: AKADEMI & UJIAN KASUS (DENGAN SOAL INTERAKTIF) =================
+# ================= TAB 2: AKADEMI & UJIAN KASUS =================
 with tab_edu:
     st.markdown("### 🎓 Akademi & Ujian Simulasi Kasus Nyata")
     st.caption("Belajar teori saja tidak cukup! Uji pemahamanmu lewat studi kasus nyata agar tidak bingung saat terjun langsung.")
 
-    # Menu Navigasi Misi
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
         if st.button("🚀 Misi 1: Dasar & Psikologi", use_container_width=True):
@@ -382,7 +403,6 @@ with tab_edu:
 
     st.markdown("---")
 
-    # --- MISI 1 ---
     if st.session_state.academy_step == 1:
         st.markdown("### 🚀 Misi 1: Pengelolaan Modal & Mental Trader")
         st.info("🎯 **Target Misi:** Menguji kedisiplinan mengelola risiko modal.")
@@ -412,9 +432,8 @@ with tab_edu:
                     st.session_state.academy_step = 2
                     st.rerun()
             else:
-                st.error("❌ **SALUR/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
+                st.error("❌ **SALAH/KELIRU!** Keputusan ini sangat berbahaya dalam dunia crypto dan bisa berujung stres finansial. Coba pilih opsi yang aman!")
 
-    # --- MISI 2 ---
     elif st.session_state.academy_step == 2:
         st.markdown("### 🕯️ Misi 2: Membaca Psikologi Candlestick")
         st.info("🎯 **Target Misi:** Menafsirkan arah tren lewat bentuk candle.")
@@ -476,7 +495,6 @@ with tab_edu:
             else:
                 st.error("❌ **Kurang tepat.** Jangan melawan arus tren turun yang kuat tanpa konfirmasi sinyal pantulan.")
 
-    # --- MISI 3 ---
     elif st.session_state.academy_step == 3:
         st.markdown("### 🧱 Misi 3: Menentukan Area Support & Resistance")
         st.info("🎯 **Target Misi:** Menempatkan titik eksekusi beli dan jual yang rasional.")
@@ -513,7 +531,6 @@ with tab_edu:
             else:
                 st.error("❌ **Kurang tepat.** Membeli di area resistance memiliki risiko tinggi terkena penolakan harga (rejection).")
 
-    # --- MISI 4 ---
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
         st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
@@ -737,7 +754,6 @@ with tab_chat:
             with st.chat_message("assistant"):
                 with st.spinner("AI sedang berpikir..."):
                     try:
-                        client = genai.Client(api_key=api_key)
                         chat_prompt = f"""
                         Kamu adalah Asisten Trading Crypto AI buatan Rey472 yang ramah, taktis, dan cerdas.
                         Koin yang sedang diamati pengguna saat ini: {symbol}.
@@ -745,12 +761,11 @@ with tab_chat:
 
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
-                        response = client.models.generate_content(
-                            model='gemini-3.6-flash',
-                            contents=chat_prompt
-                        )
-                        reply = response.text
-                        st.markdown(reply)
-                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                        reply = call_gemini_ai(chat_prompt, api_key)
+                        if reply:
+                            st.markdown(reply)
+                            st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                        else:
+                            st.error("⚠️ Gagal mendapat balasan dari AI. Coba kirim lagi.")
                     except Exception as err:
                         st.error(f"Gagal memproses pesan: {err}")
