@@ -50,29 +50,18 @@ if 'chat_history' not in st.session_state:
 if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
 
-# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI TANGGUH
+# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI RESMI DENGAN MODEL TERBARU
 def call_gemini_ai(prompt, api_key):
     try:
         client = genai.Client(api_key=api_key)
-        # Coba model utama gemini-2.5-flash
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=prompt
         )
         if response and response.text:
             return response.text
-    except Exception:
-        # Fallback ke model gemini-2.0-flash jika model utama sibuk/error
-        try:
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=prompt
-            )
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            raise e
+    except Exception as e:
+        raise e
     return None
 
 @st.cache_data(ttl=300)
