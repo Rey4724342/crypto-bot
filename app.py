@@ -44,16 +44,15 @@ responsive_css = """
             """
 st.markdown(responsive_css, unsafe_allow_html=True)
 
+# Inisialisasi Session States
 if 'journal' not in st.session_state:
     st.session_state.journal = []
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
-if 'signal_data' not in st.session_state:
-    st.session_state.signal_data = None
-if 'ai_analysis_result' not in st.session_state:
-    st.session_state.ai_analysis_result = None
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = []
 
 # 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI
 def call_gemini_ai(prompt, api_key):
@@ -184,6 +183,26 @@ def get_crypto_news_robust():
     except Exception:
         return []
 
+# 📈 FUNGSI PEMPROSES KANDEL & RSI SEDERHANA
+@st.cache_data(ttl=300)
+def get_technical_indicators(pair_symbol):
+    try:
+        url = f"https://indodax.com/tradingview/history?symbol={pair_symbol}IDR&resolution=D&from={int(time.time())-30*86400}&to={int(time.time())}"
+        res = requests.get(url, timeout=5).json()
+        if res.get('s') == 'ok':
+            closes = pd.Series(res['c'])
+            ma20 = closes.rolling(20).mean().iloc[-1]
+            
+            delta = closes.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss
+            rsi14 = 100 - (100 / (1 + rs)).iloc[-1]
+            return round(rsi14, 2), round(ma20, 2)
+    except Exception:
+        pass
+    return None, None
+
 pairs_data = get_all_indodax_pairs()
 
 # Header Utama
@@ -192,7 +211,7 @@ st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta
 st.markdown("---")
 
 st.markdown("### ⚙️ Pengaturan Koin & Strategi")
-menu_col1, menu_col2 = st.columns(2)
+menu_col1, menu_col2, menu_col3 = st.columns([2, 2, 1])
 
 with menu_col1:
     selected_label = st.selectbox(
@@ -212,6 +231,22 @@ selected_info = pairs_data[selected_label]
 ticker_id = selected_info['ticker_id']
 symbol = selected_info['symbol']
 
+# ⭐ FITUR WATCHLIST / KOIN FAVORIT
+with menu_col3:
+    st.write("")
+    st.write("")
+    if symbol not in st.session_state.watchlist:
+        if st.button("⭐ Tambah Watchlist", use_container_width=True):
+            st.session_state.watchlist.append(symbol)
+            st.success(f"{symbol} masuk favorit!")
+    else:
+        if st.button("❌ Hapus Watchlist", use_container_width=True):
+            st.session_state.watchlist.remove(symbol)
+            st.rerun()
+
+if st.session_state.watchlist:
+    st.caption(f"⭐ **Watchlist Kamu:** {', '.join(st.session_state.watchlist)}")
+
 st.markdown("---")
 
 tab_main, tab_edu, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = st.tabs([
@@ -219,8 +254,8 @@ tab_main, tab_edu, tab_sentimen, tab_compare, tab_journal, tab_calc, tab_chat = 
     "🎓 Akademi & Ujian Kasus",
     "📰 Sentimen & Berita Market",
     "🔀 Perbandingan Koin", 
-    "📓 Jurnal Trading", 
-    "🧮 Kalkulator & Averaging",
+    "📓 Jurnal Trading & Checklist", 
+    "🧮 Kalkulator, Averaging & DCA",
     "💬 Asisten AI Chat"
 ])
 
@@ -270,39 +305,11 @@ with tab_main:
     with col_title:
         st.subheader(f"{symbol} / IDR")
 
-    # 🎯 VISUAL MARKER BADGE (Sinyal Harga Di Atas Grafik)
-    if st.session_state.signal_data and st.session_state.signal_data.get('symbol') == symbol:
-        sig = st.session_state.signal_data
-        st.markdown(f"#### 🎯 Marker Sinyal Trading AI ({symbol})")
-        m_col1, m_col2, m_col3 = st.columns(3)
-        with m_col1:
-            st.markdown(
-                f"""
-                <div style="background-color: #1b382b; border: 2px solid #00E676; border-radius: 10px; padding: 12px; text-align: center;">
-                    <span style="color: #00E676; font-weight: bold; font-size: 16px;">🟢 AREA BUY (BELI)</span><br>
-                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['buy_price']:,}</span>
-                </div>
-                """, unsafe_allow_html=True
-            )
-        with m_col2:
-            st.markdown(
-                f"""
-                <div style="background-color: #3d1c1d; border: 2px solid #FF5252; border-radius: 10px; padding: 12px; text-align: center;">
-                    <span style="color: #FF5252; font-weight: bold; font-size: 16px;">🔴 AREA TAKE PROFIT (SELL)</span><br>
-                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['tp_price']:,}</span>
-                </div>
-                """, unsafe_allow_html=True
-            )
-        with m_col3:
-            st.markdown(
-                f"""
-                <div style="background-color: #382c19; border: 2px solid #FFC107; border-radius: 10px; padding: 12px; text-align: center;">
-                    <span style="color: #FFC107; font-weight: bold; font-size: 16px;">🛑 STOP LOSS (SL)</span><br>
-                    <span style="color: white; font-size: 20px; font-weight: bold;">Rp {sig['sl_price']:,}</span>
-                </div>
-                """, unsafe_allow_html=True
-            )
-        st.markdown("<br>", unsafe_allow_html=True)
+    # 📊 INDIKATOR TEKNIKAL OTOMATIS (RSI & MA)
+    rsi_val, ma20_val = get_technical_indicators(symbol)
+    if rsi_val and ma20_val:
+        rsi_status = "🟢 Oversold (Potensi Beli)" if rsi_val <= 30 else ("🔴 Overbought (Rawan Jual)" if rsi_val >= 70 else "🟡 Netral")
+        st.info(f"📊 **Sinyal Indikator Otomatis**: RSI (14) = **{rsi_val}** [{rsi_status}] | MA (20) = **Rp {int(ma20_val):,}**")
 
     # 📊 GRAFIK TRADINGVIEW
     st.markdown("#### 📊 Grafik Candlestick Market (Real-Time)")
@@ -342,15 +349,17 @@ with tab_main:
     st.caption("💡 *Ketik angka polos tanpa titik/koma (misal: 1324307).*")
 
     with st.form("portfolio_form"):
-        col_input1, col_input2 = st.columns(2)
+        col_input1, col_input2, col_input3 = st.columns(3)
         with col_input1:
             my_buy_price = st.number_input(f"Harga Beli Awal Kamu (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
         with col_input2:
             my_amount_coin = st.number_input(f"Jumlah Koin {symbol} yang Kamu Miliki:", min_value=0.0, value=0.0, step=0.1, format="%.4f")
+        with col_input3:
+            target_tp = st.number_input(f"Target Take Profit (Rp):", min_value=0.0, value=0.0, step=1000.0, format="%.0f")
         
-        btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi & Sinyal Market", use_container_width=True)
+        btn_submit = st.form_submit_button("🤖 Mulaikan Analisis AI Posisi Saya", use_container_width=True)
 
-    if btn_submit:
+    if btn_submit or (my_buy_price > 0):
         try:
             url = f"https://indodax.com/api/ticker/{ticker_id}"
             headers = {'User-Agent': 'Mozilla/5.0'}
@@ -359,19 +368,6 @@ with tab_main:
             current_market_price = int(res['last'])
             high = int(res['high'])
             low = int(res['low'])
-
-            # Menyimpan Data Sinyal untuk Marker Visual Grafik
-            st.session_state.signal_data = {
-                'symbol': symbol,
-                'buy_price': int(low * 1.01),
-                'tp_price': int(high * 0.99),
-                'sl_price': int(low * 0.97)
-            }
-
-            if current_market_price <= low * 1.02:
-                st.warning("⚠️ **Perhatian Risk**: Harga pasar saat ini berada sangat dekat dengan titik terendah (Low 24j). Pertimbangkan konfirmasi pantulan support.")
-            elif current_market_price >= high * 0.98:
-                st.warning("🔥 **Perhatian Area High**: Harga berada di dekat puncak 24j. Hati-hati terhadap aksi profit taking.")
 
             if my_buy_price > 0:
                 pnl_rp = (current_market_price - my_buy_price) * my_amount_coin
@@ -389,45 +385,46 @@ with tab_main:
                     c3.metric(label="Status PnL (Keuntungan)", value=f"+Rp {int(pnl_rp):,}", delta=f"+{pnl_pct:.2f}%")
                 else:
                     c3.metric(label="Status PnL (Kerugian)", value=f"-Rp {abs(int(pnl_rp)):,}", delta=f"{pnl_pct:.2f}%")
-            else:
-                c3.metric(label="Status PnL", value="Belum diisi (0)")
 
-            api_key = st.secrets.get("GEMINI_API_KEY")
+                # 📊 TARGET PROFIT PROGRESS BAR
+                if target_tp > my_buy_price:
+                    progress_pct = min(max((current_market_price - my_buy_price) / (target_tp - my_buy_price), 0.0), 1.0)
+                    st.write(f"🎯 **Kemajuan Menuju Target Profit (Rp {int(target_tp):,}):**")
+                    st.progress(progress_pct)
 
-            if not api_key:
-                st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
-            else:
-                with st.spinner(f"AI sedang merespon analisis cepat koin {symbol}..."):
-                    prompt = f"""
-                    Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
-                    Gaya Trading Pengguna: {trading_style}
-                    
-                    Data Posisi Pengguna:
-                    - Nama Aset: {selected_info['clean_name']}
-                    - Harga Beli Awal Pengguna: Rp {my_buy_price:,}
-                    - Harga Pasar Saat Ini: Rp {current_market_price:,}
-                    - Status Profit/Loss Sementara: {pnl_pct:.2f}% (Rp {int(pnl_rp):,})
-                    - Harga Tertinggi 24j: Rp {high:,}
-                    - Harga Terendah 24j: Rp {low:,}
+            if btn_submit:
+                api_key = st.secrets.get("GEMINI_API_KEY")
 
-                    Berikan analisis ringkas, padat, dan taktis dalam format poin rapi:
-                    1. 🌐 Analisis Posisi Saat Ini
-                    2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT / CUT LOSS / BUY ON DIP)
-                    3. 🛑 Saran Harga Stop Loss (SL) yang aman.
-                    4. 🎯 Target Jual / Take Profit (TP1 & TP2) dalam Rupiah.
-                    5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
-                    """
-                    
-                    ai_reply = call_gemini_ai(prompt, api_key)
-                    st.session_state.ai_analysis_result = ai_reply
+                if not api_key:
+                    st.error("⚠️ API Key belum dikonfigurasi di Streamlit Secrets!")
+                else:
+                    with st.spinner(f"AI sedang merespon analisis cepat koin {symbol}..."):
+                        prompt = f"""
+                        Kamu adalah konsultan Trading Crypto profesional buatan Rey472.
+                        Gaya Trading Pengguna: {trading_style}
+                        
+                        Data Posisi Pengguna:
+                        - Nama Aset: {selected_info['clean_name']}
+                        - Harga Beli Awal Pengguna: Rp {my_buy_price:,}
+                        - Harga Pasar Saat Ini: Rp {current_market_price:,}
+                        - Status Profit/Loss Sementara: {pnl_pct:.2f}% (Rp {int(pnl_rp):,})
+                        - Harga Tertinggi 24j: Rp {high:,}
+                        - Harga Terendah 24j: Rp {low:,}
+
+                        Berikan analisis ringkas, padat, dan taktis dalam format poin rapi:
+                        1. 🌐 Analisis Posisi Saat Ini
+                        2. 🟢 Rekomendasi Aksi Utama: (HOLD / TAKE PROFIT / CUT LOSS / BUY ON DIP)
+                        3. 🛑 Saran Harga Stop Loss (SL) yang aman.
+                        4. 🎯 Target Jual / Take Profit (TP1 & TP2) dalam Rupiah.
+                        5. 💡 Tips Manajemen Risiko singkat dari AI Rey472.
+                        """
+                        
+                        ai_reply = call_gemini_ai(prompt, api_key)
+                        st.markdown("### 🤖 Hasil Penjelasan & Rekomendasi AI Rey472")
+                        st.info(ai_reply)
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
-
-    # Menampilkan Hasil Penjelasan AI (Disimpan Dalam Session State Agar Tidak Hilang)
-    if st.session_state.ai_analysis_result:
-        st.markdown("### 🤖 Hasil Penjelasan & Rekomendasi AI Rey472")
-        st.info(st.session_state.ai_analysis_result)
 
 # ================= TAB 2: AKADEMI & UJIAN KASUS =================
 with tab_edu:
@@ -580,7 +577,7 @@ with tab_edu:
 
     elif st.session_state.academy_step == 4:
         st.markdown("### 📊 Misi 4: Lab Praktik Langsung di TradingView")
-        st.info("🎯 **Target Misi:** Mempublikkan analisis mandiri di chart profesional.")
+        st.info("🎯 **Target Misi:** Mempraktikkan analisis mandiri di chart profesional.")
 
         st.write("""
         Gunakan chart di bawah ini untuk menguji kemampuanmu memasang garis bantu (garis horizontal support/resistance) secara mandiri:
@@ -710,37 +707,67 @@ with tab_compare:
         except Exception as err:
             st.error(f"Gagal membandingkan koin: {err}")
 
-# ================= TAB 5: JURNAL TRADING =================
+# ================= TAB 5: JURNAL & CHECKLIST TRADING =================
 with tab_journal:
-    st.markdown("### 📓 Jurnal Catatan Trading")
+    col_j1, col_j2 = st.columns([2, 1])
     
-    with st.form("journal_form"):
-        j_coin = st.text_input("Nama Koin / Ticker:", value=symbol)
-        j_type = st.selectbox("Tipe Transaksi:", ["BUY / BELI", "SELL / JUAL"])
-        j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=0.0, value=0.0, step=100.0)
-        j_notes = st.text_area("Catatan Alasan Trade / Strategi:")
+    with col_j1:
+        st.markdown("### 📓 Jurnal Catatan Trading")
         
-        submitted = st.form_submit_button("➕ Simpan ke Catatan")
-        if submitted:
-            st.session_state.journal.append({
-                "Koin": j_coin,
-                "Tipe": j_type,
-                "Harga": f"Rp {j_price:,.0f}",
-                "Catatan": j_notes
-            })
-            st.success("Catatan trading tersimpan!")
+        with st.form("journal_form"):
+            j_coin = st.text_input("Nama Koin / Ticker:", value=symbol)
+            j_type = st.selectbox("Tipe Transaksi:", ["BUY / BELI", "SELL / JUAL"])
+            j_price = st.number_input("Harga Beli/Jual (Rp):", min_value=0.0, value=0.0, step=100.0)
+            j_notes = st.text_area("Catatan Alasan Trade / Strategi:")
+            
+            submitted = st.form_submit_button("➕ Simpan ke Catatan")
+            if submitted:
+                st.session_state.journal.append({
+                    "Koin": j_coin,
+                    "Tipe": j_type,
+                    "Harga": f"Rp {j_price:,.0f}",
+                    "Catatan": j_notes
+                })
+                st.success("Catatan trading tersimpan!")
 
-    if st.session_state.journal:
-        st.markdown("#### 📜 Riwayat Catatan Kamu:")
-        df_j = pd.DataFrame(st.session_state.journal)
-        st.dataframe(df_j, use_container_width=True)
-        if st.button("🗑️ Hapus Semua Catatan"):
-            st.session_state.journal = []
-            st.rerun()
+        if st.session_state.journal:
+            st.markdown("#### 📜 Riwayat Catatan Kamu:")
+            df_j = pd.DataFrame(st.session_state.journal)
+            st.dataframe(df_j, use_container_width=True)
+            
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                # 📥 DOWNLOAD JURNAL TO CSV
+                csv_data = df_j.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Unduh Jurnal (File CSV)",
+                    data=csv_data,
+                    file_name="jurnal_trading_rey472.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with col_d2:
+                if st.button("🗑️ Hapus Semua Catatan", use_container_width=True):
+                    st.session_state.journal = []
+                    st.rerun()
 
-# ================= TAB 6: KALKULATOR & AVERAGING =================
+    # 📝 TRADE PLANNER CHECKLIST (ANTI FOMO)
+    with col_j2:
+        st.markdown("### ✅ Trade Planner Checklist")
+        st.caption("Pastikan centang semua sebelum menekan tombol beli!")
+        c_fomo1 = st.checkbox("Gunakan Uang Dingin (Bukan SPP/Utang)")
+        c_fomo2 = st.checkbox("Sudah Menentukan Stop Loss (SL)")
+        c_fomo3 = st.checkbox("Risk to Reward Minimal 1:2")
+        c_fomo4 = st.checkbox("Tidak Terpancing Emosi FOMO / Viral")
+        
+        if c_fomo1 and c_fomo2 and c_fomo3 and c_fomo4:
+            st.success("🔥 **SIAP ENTRY!** Kedisiplinanmu sudah 100% terjaga.")
+        else:
+            st.warning("⚠️ Selesaikan semua checklist disiplin di atas.")
+
+# ================= TAB 6: KALKULATOR & DCA =================
 with tab_calc:
-    st.markdown("### 🧮 Kalkulator Trading & Averaging Down")
+    st.markdown("### 🧮 Kalkulator Trading, Averaging & Simulasi DCA")
     
     calc_col1, calc_col2 = st.columns(2)
 
@@ -759,10 +786,8 @@ with tab_calc:
             
             st.info(f"💡 Maksimal Rugi Aman: **Rp {int(maks_resiko_rp):,}**")
             st.success(f"💡 Alokasi Beli Ideal: **Rp {int(min(rekomendasi_posisi_rp, modal_rp)):,}**")
-        else:
-            st.warning("⚠️ Masukkan harga entry dan stop loss yang valid.")
 
-    with calc_col2:
+        st.markdown("---")
         st.markdown("#### 2. Kalkulator Averaging Down")
         avg_price1 = st.number_input("Harga Beli Pertama (Rp):", min_value=0.0, value=0.0, key="avg_p1")
         avg_qty1 = st.number_input(f"Jumlah Koin {symbol} Beli Pertama:", min_value=0.0, value=0.0, key="avg_q1")
@@ -775,8 +800,28 @@ with tab_calc:
             total_koin = avg_qty1 + avg_qty2
             avg_final_price = total_modal / total_koin
             
-            st.success(f"🎯 **Harga Rata-Rata Baru (Average Price)**: Rp {avg_final_price:,.2f}")
-            st.info(f"💰 Total Modal Dikeluarkan: **Rp {total_modal:,.0f}** | Total Aset: **{total_koin:.4f} {symbol}**")
+            st.success(f"🎯 **Harga Rata-Rata Baru**: Rp {avg_final_price:,.2f}")
+
+    # 💰 SIMULASI INVESTASI RUTIN (DCA)
+    with calc_col2:
+        st.markdown("#### 3. Kalkulator Simulasi DCA (Dollar Cost Averaging)")
+        st.caption("Hitung estimasi menabung crypto secara konsisten.")
+        
+        dca_amount = st.number_input("Alokasi Tabungan Rutin (Rp):", min_value=10000.0, value=100000.0, step=50000.0)
+        dca_freq = st.selectbox("Frekuensi Menabung:", ["Mingguan (4x / Bulan)", "Bulanan (1x / Bulan)"])
+        dca_duration = st.slider("Durasi Menabung (Bulan):", min_value=1, max_value=36, value=12)
+        dca_est_return = st.slider("Estimasi Kenaikan Koin pertahun (%):", min_value=-50, max_value=200, value=25)
+
+        total_months = dca_duration
+        frequency_count = (total_months * 4) if "Mingguan" in dca_freq else total_months
+        total_dca_modal = dca_amount * frequency_count
+        
+        growth_factor = 1 + (dca_est_return / 100)
+        total_est_val = total_dca_modal * growth_factor
+        est_profit = total_est_val - total_dca_modal
+
+        st.info(f"💰 Total Modal Terkumpul: **Rp {int(total_dca_modal):,}**")
+        st.success(f"🚀 Estimasi Nilai Akhir Portofolio: **Rp {int(total_est_val):,}** (+Rp {int(est_profit):,})")
 
 # ================= TAB 7: ASISTEN AI CHAT =================
 with tab_chat:
