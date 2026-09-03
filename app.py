@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import xml.etree.ElementTree as ET
 import re
+import time
 from google import genai
 
 st.set_page_config(
@@ -50,19 +51,29 @@ if 'chat_history' not in st.session_state:
 if 'academy_step' not in st.session_state:
     st.session_state.academy_step = 1
 
-# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI RESMI DENGAN MODEL TERBARU
+# 🚀 FUNGSI HELPER PEMANGGILAN AI GEMINI (ANTI 503 VIA AUTO-RETRY & FALLBACK)
 def call_gemini_ai(prompt, api_key):
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt
-        )
-        if response and response.text:
-            return response.text
-    except Exception as e:
-        raise e
-    return None
+    client = genai.Client(api_key=api_key)
+    models_to_try = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+    
+    for model_name in models_to_try:
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                error_str = str(e)
+                if '503' in error_str or 'UNAVAILABLE' in error_str:
+                    time.sleep(2)
+                    continue
+                else:
+                    break
+                    
+    return "⚠️ Server Google AI sedang sangat sibuk (overload). Silakan coba kirim pertanyaan sekali lagi."
 
 @st.cache_data(ttl=300)
 def get_indodax_summary():
@@ -362,11 +373,8 @@ with tab_main:
                     """
                     
                     ai_reply = call_gemini_ai(prompt, api_key)
-                    if ai_reply:
-                        st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
-                        st.info(ai_reply)
-                    else:
-                        st.error("⚠️ Server Gemini AI sedang sibuk. Silakan coba klik tombol sekali lagi.")
+                    st.markdown("### 🤖 Hasil Analisis Kilat AI Rey472")
+                    st.info(ai_reply)
                     
         except Exception as e:
             st.error(f"Gagal memuat analisis: {e}")
@@ -751,10 +759,7 @@ with tab_chat:
                         Jawab secara jelas, praktis, dan langsung ke inti pembahasan.
                         """
                         reply = call_gemini_ai(chat_prompt, api_key)
-                        if reply:
-                            st.markdown(reply)
-                            st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                        else:
-                            st.error("⚠️ Gagal mendapat balasan dari AI. Coba kirim lagi.")
+                        st.markdown(reply)
+                        st.session_state.chat_history.append({"role": "assistant", "content": reply})
                     except Exception as err:
                         st.error(f"Gagal memproses pesan: {err}")
