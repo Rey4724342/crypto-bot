@@ -98,7 +98,7 @@ def get_all_indodax_pairs():
         for item in res:
             ticker_id = item.get('ticker_id', '')
             if ticker_id.endswith('_idr'):
-                symbol = ticker_id.replace('_idr', '').upper()
+                symbol = item.get('symbol', ticker_id.replace('_idr', '').upper()).upper()
                 desc = item.get('description', symbol)
                 clean_name = f"{symbol} - {desc}" if desc.upper() != symbol else symbol
                 logo_url = item.get('url_logo_png', '')
@@ -208,6 +208,68 @@ pairs_data = get_all_indodax_pairs()
 # Header Utama
 st.title("🚀 Crypto AI Trading Hub & Analyst Pro")
 st.markdown("<h4 style='color: #4CAF50; margin-top: -15px;'>👨‍💻 Pencipta: <b>Rey472</b></h4>", unsafe_allow_html=True)
+
+# 🎨 EFEK ANIMASI MENU DENGAN TOMBOL MEMBAL
+animation_menu_html = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+  body { background-color: transparent; color: #f8fafc; padding: 5px; }
+  .card-container { background-color: #1e293b; border-radius: 16px; padding: 15px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+  .menu-group { display: flex; gap: 8px; margin-bottom: 15px; }
+  .btn-menu { flex: 1; padding: 10px 12px; border: none; border-radius: 10px; background-color: #334155; color: #94a3b8; font-weight: 600; font-size: 14px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, color 0.2s ease; }
+  .btn-menu:active { transform: translateY(2px) scale(0.94); }
+  .btn-menu.active { background-color: #10b981; color: #0f172a; }
+  .fitur-wrapper { min-height: 70px; }
+  .fitur-box { display: none; opacity: 0; transform: translateY(12px); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
+  .fitur-box.show { display: block; opacity: 1; transform: translateY(0); }
+  .fitur-box h3 { color: #10b981; margin-bottom: 4px; font-size: 16px; }
+  .fitur-box p { color: #cbd5e1; font-size: 13px; line-height: 1.4; }
+</style>
+</head>
+<body>
+  <div class="card-container">
+    <div class="menu-group">
+      <button class="btn-menu active" onclick="gantiFitur(event, 'fitur1')">Fitur 1</button>
+      <button class="btn-menu" onclick="gantiFitur(event, 'fitur2')">Fitur 2</button>
+      <button class="btn-menu" onclick="gantiFitur(event, 'fitur3')">Fitur 3</button>
+    </div>
+    <div class="fitur-wrapper">
+      <div id="fitur1" class="fitur-box show">
+        <h3>🚀 Fitur Utama</h3>
+        <p>Gunakan dashboard interaktif untuk memantau pergerakan harga pasar real-time.</p>
+      </div>
+      <div id="fitur2" class="fitur-box">
+        <h3>📊 Analisis Data</h3>
+        <p>Analisis tren pasar Indodax dan indikator teknikal dengan cepat.</p>
+      </div>
+      <div id="fitur3" class="fitur-box">
+        <h3>⚙️ Pengaturan Strategi</h3>
+        <p>Atur strategi Swing atau Scalping sesuai dengan gaya trading kamu.</p>
+      </div>
+    </div>
+  </div>
+  <script>
+    function gantiFitur(evt, fiturId) {
+      document.querySelectorAll('.btn-menu').forEach(btn => btn.classList.remove('active'));
+      evt.currentTarget.classList.add('active');
+      document.querySelectorAll('.fitur-box').forEach(box => {
+        box.classList.remove('show');
+        box.style.display = 'none';
+      });
+      const targetBox = document.getElementById(fiturId);
+      targetBox.style.display = 'block';
+      setTimeout(() => { targetBox.classList.add('show'); }, 20);
+    }
+  </script>
+</body>
+</html>
+"""
+components.html(animation_menu_html, height=185)
+
 st.markdown("---")
 
 st.markdown("### ⚙️ Pengaturan Koin & Strategi")
